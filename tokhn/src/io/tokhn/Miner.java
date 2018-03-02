@@ -30,11 +30,13 @@ import java.security.Security;
 import java.security.spec.InvalidKeySpecException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.LongStream;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -48,7 +50,6 @@ import io.tokhn.core.Wallet;
 import io.tokhn.node.InvalidNetworkException;
 import io.tokhn.node.Message;
 import io.tokhn.node.Network;
-import io.tokhn.node.Version;
 import io.tokhn.node.message.BlockMessage;
 import io.tokhn.node.message.DifficultyMessage;
 import io.tokhn.node.message.ExitMessage;
@@ -56,7 +57,6 @@ import io.tokhn.node.message.PingMessage;
 import io.tokhn.node.message.TransactionMessage;
 import io.tokhn.node.message.WelcomeMessage;
 import io.tokhn.store.MapDBWalletStore;
-import io.tokhn.util.Hash;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -68,17 +68,22 @@ public class Miner extends Thread {
 	private Socket clientSocket = null;
 	private ObjectInputStream ois = null;
 	private ObjectOutputStream oos = null;
-	private int difficulty;
-	private int reward;
-	private Block latest;
-	private Map<Hash, Transaction> pendingTxs = Collections.synchronizedMap(new HashMap<>());
+	private Map<Network, Block> tails = new HashMap<>();
+	private Map<Network, Integer> difficulties = new HashMap<>();
+	private Map<Network, Integer> rewards = new HashMap<>();
+	/*
+	 * the below data structure contains all the pending transactions for all the networks
+	 * it is going to keep them in the natural of the networks, so TKHN will be first
+	 * it could be supplied a different Comperator if a differen't order is desired
+	 */
+	private ConcurrentSkipListMap<Network,List<Transaction>> pendingTxs = new ConcurrentSkipListMap<>();
 	private Wallet wallet = null;
 	
 	@Option(names = { "-h", "--help" }, usageHelp = true, description = "displays this help message and exit")
 	private boolean helpRequested = false;
 	
 	@Option(names = { "-n", "--network" }, required = false, description = "the network")
-	private Network network = Network.TEST;
+	private Set<Network> networks = Network.getAll();
 	
 	@Option(names = { "-H", "--host" }, required = false, description = "the remote host")
 	private String HOST = "localhost";
@@ -96,10 +101,9 @@ public class Miner extends Thread {
 	
 	@Override
 	public void run() {
-		Version version = network.getVersion();
 		try {
-			wallet = new Wallet(network, version, new MapDBWalletStore(network));
-			if(wallet.getPrivateKey() == null || wallet.getPublicKey() == null || wallet.getAddress() == null) {
+			wallet = new Wallet(Network.TKHN.getVersion(), new MapDBWalletStore());
+			if(wallet.getPrivateKey() == null || wallet.getPublicKey() == null) {
 				System.err.println("Wallet needs to be generated before running Miner.");
 				System.exit(-1);
 			}
@@ -131,30 +135,14 @@ public class Miner extends Thread {
 							e.printStackTrace();
 						}
 					}
-
-					// put the pending transactions into the new block we are going to mine
-					List<Transaction> transactions = new LinkedList<>();
-					pendingTxs.values().stream().forEach(tx -> transactions.add(tx));
-					transactions.add(Transaction.rewardOf(version, wallet.getAddress(), reward));
-
-					Metric metric = new Metric();
-					metric.start();
-					Block block = LongStream.iterate(0, i -> i + 1).parallel()
-							.peek(metric::handleLong)
-							.mapToObj(i -> new Block(network, version, latest.getIndex() + 1, latest.getHash(), Instant.now().getEpochSecond(), transactions, difficulty, i))
-							.filter(b -> Block.hashMatchesDifficulty(b.getHash(), difficulty)).findAny().orElse(null);
-					metric.end();
-					//Block block = Block.findBlock(network, version, latest.getIndex() + 1, latest.getHash(), transactions, difficulty);
-
-					sendMessage(new BlockMessage(wallet.getNetwork(), block));
-					// let's wait to get our block back confirming it was added to chain
-					state = State.WAITING;
 					
-					System.out.printf("Mined new block with difficulty of %d at a hash rate of %,.2f Mh/s\n", difficulty, metric.getRate());
-					/*
-					String humanDuration = Duration.between(start, end).toString().substring(2).replaceAll("(\\d[HMS])(?!$)", "$1 ").toLowerCase();
-					System.out.printf("Mined new block with difficulty of %d in %s\n", difficulty, humanDuration);
-					*/
+					if(pendingTxs.isEmpty()) {
+						//no pending transactions, so mine TKHN
+						mineBlock(Network.TKHN, null);
+					} else {
+						Entry<Network, List<Transaction>> firstEntry = pendingTxs.firstEntry();
+						mineBlock(firstEntry.getKey(), firstEntry.getValue());
+					}
 				}
 				clientSocket.close();
 			} catch (IOException e) {
@@ -162,8 +150,35 @@ public class Miner extends Thread {
 			}
 		}
 	}
+	
+	private void mineBlock(Network network, List<Transaction> txs) {
+		List<Transaction> transactions = new LinkedList<>();
+		//add a reward for ourselves first
+		int difficulty = difficulties.get(network);
+		int reward = rewards.get(network);
+		Block tail = tails.get(network);
+		transactions.add(Transaction.rewardOf(network.getVersion(), wallet.getAddress(network), reward));
+		//add all the pending transactions if any
+		if(txs != null) {
+			txs.forEach(tx -> transactions.add(tx));
+		}
+		
+		Metric metric = new Metric();
+		metric.start();
+		Block block = LongStream.iterate(0, i -> i + 1).parallel()
+				.peek(metric::handleLong)
+				.mapToObj(i -> new Block(network, network.getVersion(), tail.getIndex() + 1, tail.getHash(), Instant.now().getEpochSecond(), transactions, difficulty, i))
+				.filter(b -> Block.hashMatchesDifficulty(b.getHash(), difficulty)).findAny().orElse(null);
+		metric.end();
+		
+		sendMessage(new BlockMessage(network, block));
+		// let's wait to get our block back confirming it was added to chain
+		state = State.WAITING;
+		
+		System.out.printf("Mined new block with difficulty of %d at a hash rate of %,.2f Mh/s\n", difficulty, metric.getRate());
+	}
 
-	public void sendMessage(Object message) {
+	private void sendMessage(Object message) {
 		try {
 			if (oos == null) {
 				// set this up for the first time
@@ -176,12 +191,13 @@ public class Miner extends Thread {
 		}
 	}
 
-	private void updatePendingTxs() {
-		latest.getTransactions().stream().forEach(tx -> {
-			if (pendingTxs.containsKey(tx.getId())) {
-				pendingTxs.remove(tx.getId());
-			}
-		});
+	private void updatePendingTxs(Network network) {
+		List<Transaction> networkTxs = pendingTxs.get(network);
+		if(networkTxs != null) {
+			tails.get(network).getTransactions().stream().forEach(tx -> {
+				networkTxs.remove(tx);
+			});
+		}
 	}
 
 	private void checkForReward(Block block) {
@@ -190,15 +206,15 @@ public class Miner extends Thread {
 			if(tx.getTxis().size() == 0 && tx.getTxos().size() == 1) {
 				//this is a miner reward
 				TXO txo = tx.getTxos().get(0);
-				if(txo.getAddress().equals(wallet.getAddress())) {
-					//make sure this is our reward
-					rewards.add(new UTXO(tx.getId(), 0, txo.getAddress(), txo.getAmount()));
+				//make sure this is our reward
+				if(txo.getAddress().equals(wallet.getAddress(block.getNetwork()))) {
+					rewards.add(new UTXO(block.getNetwork(), tx.getId(), 0, txo.getAddress(), txo.getAmount()));
 				}
 			}
 		}
 		Token reward = rewards.stream().map(utxo -> utxo.getAmount()).reduce(Token.ZERO, (a, b) -> Token.sum(a, b));
 		wallet.addUtxos(rewards);
-		System.out.printf("Earned a reward of %s; wallet balace is now %s\n", reward, wallet.getBalance());
+		System.out.printf("Earned a reward of %s; wallet balace is now %s\n", reward, wallet.getBalance(block.getNetwork()));
 	}
 
 	private static enum State {
@@ -234,24 +250,27 @@ public class Miner extends Thread {
 						//don't change state with a ping message
 					} else if (read instanceof WelcomeMessage) {
 						WelcomeMessage welcomeMessage = (WelcomeMessage) read;
-						difficulty = welcomeMessage.difficulty;
-						reward = welcomeMessage.reward;
-						latest = welcomeMessage.latestBlock;
+						tails.put(welcomeMessage.getNetwork(), welcomeMessage.latestBlock);
+						difficulties.put(welcomeMessage.getNetwork(), welcomeMessage.difficulty);
+						rewards.put(welcomeMessage.getNetwork(), welcomeMessage.reward);
 						state = Miner.State.RUNNING;
 					} else if (read instanceof DifficultyMessage) {
 						DifficultyMessage difficultyMessage = (DifficultyMessage) read;
-						difficulty = difficultyMessage.difficulty;
+						difficulties.put(difficultyMessage.getNetwork(), difficultyMessage.difficulty);
 						state = Miner.State.RUNNING;
 					} else if (read instanceof TransactionMessage) {
 						// TODO: consider the case where we are RUNNING, but might get a new
 						// TransactionMessage
 						TransactionMessage transactionMessage = (TransactionMessage) read;
-						pendingTxs.put(transactionMessage.transaction.getId(), transactionMessage.transaction);
+						if(!pendingTxs.containsKey(transactionMessage.getNetwork())) {
+							pendingTxs.put(transactionMessage.getNetwork(), new LinkedList<Transaction>());
+						}
+						pendingTxs.get(transactionMessage.getNetwork()).add(transactionMessage.transaction);
 						state = Miner.State.RUNNING;
 					} else if (read instanceof BlockMessage) {
 						BlockMessage blockMessage = (BlockMessage) read;
-						latest = blockMessage.block;
-						updatePendingTxs();
+						tails.put(blockMessage.getNetwork(), blockMessage.block);
+						updatePendingTxs(blockMessage.getNetwork());
 						checkForReward(blockMessage.block);
 						state = Miner.State.RUNNING;
 					}
@@ -268,10 +287,17 @@ public class Miner extends Thread {
 	private boolean validMessage(Message message) {
 		if(message == null) {
 			return false;
-		} else if (message.getNetwork() == network && message.getVersion() == network.getVersion()) {
-			return true;
 		} else {
-			return false;
+			try {
+				Network network = Network.valueOf(message.getNetwork().getId());
+				if(networks.contains(network) && network.getVersion() == message.getVersion()) {
+					return true;
+				} else {
+					return false;
+				}
+			} catch (InvalidNetworkException e) {
+				return false;
+			}
 		}
 	}
 	

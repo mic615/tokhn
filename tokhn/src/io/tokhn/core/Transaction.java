@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 import io.tokhn.node.Version;
 import io.tokhn.util.Hash;
 
-public class Transaction implements Serializable {
+public class Transaction implements Comparable<Transaction>, Serializable {
 	private static final long serialVersionUID = -8510962834025629565L;
 	private final Version version;
 	private final Hash id;
@@ -95,5 +95,27 @@ public class Transaction implements Serializable {
 
 	public List<TXO> getTxos() {
 		return txos;
+	}
+	
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		} else if (o == null) {
+			return false;
+		} else if (getClass() != o.getClass()) {
+			return false;
+		}
+
+		Transaction other = (Transaction) o;
+		if(!id.equals(other.getId())) {
+			return false;
+		}
+		return true;
+	}
+
+	@Override
+	public int compareTo(Transaction o) {
+		return id.compareTo(o.getId());
 	}
 }

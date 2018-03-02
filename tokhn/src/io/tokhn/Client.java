@@ -23,9 +23,12 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.security.Security;
 import java.util.Base64;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
+import io.tokhn.core.Address;
 import io.tokhn.core.Wallet;
 import io.tokhn.node.Message;
 import io.tokhn.node.Network;
@@ -70,14 +73,22 @@ public class Client implements Runnable {
 		Version version = network.getVersion();
 		try {
 			if(generateRequested) {
-				wallet = Wallet.build(network, version);
+				wallet = Wallet.build(version);
 				byte[] publicKey = Base64.getEncoder().encode(wallet.getPublicKey().getEncoded());
-				System.out.printf("Public Key: %s\nAddress: %s\n", new String(publicKey, StandardCharsets.UTF_8), wallet.getAddress());
+				System.out.printf("Public Key: %s\nAddresses:\n", new String(publicKey, StandardCharsets.UTF_8));
+				Map<Network, Address> addresses = wallet.getAddresses();
+				for(Entry<Network, Address> entry : addresses.entrySet()) {
+					System.out.printf("Network: %s, Address: %s\n", entry.getKey(), entry.getValue());
+				}
 				System.exit(0);
 			} else {
-				wallet = new Wallet(network, version, new MapDBWalletStore(network));
+				wallet = new Wallet(version, new MapDBWalletStore());
 			}
-			System.out.printf("Your address is %s and your assumed balance is %s.\n", wallet.getAddress(), wallet.getBalance());
+			System.out.println("Your addresses and balances are as follows:");
+			Map<Network, Address> addresses = wallet.getAddresses();
+			for(Entry<Network, Address> entry : addresses.entrySet()) {
+				System.out.printf("Network: %s, Address: %s, Balance: %s\n", entry.getKey(), entry.getValue(), wallet.getBalance(entry.getKey()));
+			}
 			Peer[] seedPeers = network.getSeedPeers();
 			for(int itr = 0; itr < seedPeers.length; itr++) {
 				Peer peer = seedPeers[itr];

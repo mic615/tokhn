@@ -18,39 +18,46 @@ package io.tokhn.core;
 
 import java.io.Serializable;
 
+import io.tokhn.node.Network;
 import io.tokhn.util.Hash;
 
 public class UTXO implements Serializable {
 	private static final long serialVersionUID = -411556459302981328L;
+	private final Network network;
 	private final Hash utxoId;
 	private final Hash sourceTxoId;
 	private final int sourceTxoIndex;
 	private final Address address;
 	private final Token amount;
 	
-	public UTXO(TXO txo, TXI txi) {
-		this(txi.getSourceTxoId(), txi.getSourceTxoIndex(), txo.getAddress(), txo.getAmount());
+	public UTXO(Network network, TXO txo, TXI txi) {
+		this(network, txi.getSourceTxoId(), txi.getSourceTxoIndex(), txo.getAddress(), txo.getAmount());
 	}
 	
-	public UTXO(Hash sourceTxoId, int sourceTxoIndex, Address address, Token amount) {
-		this.utxoId = hash(sourceTxoId, sourceTxoIndex);
+	public UTXO(Network network, Hash sourceTxoId, int sourceTxoIndex, Address address, Token amount) {
+		this.network = network;
+		this.utxoId = hash(network, sourceTxoId, sourceTxoIndex);
 		this.sourceTxoId = sourceTxoId;
 		this.sourceTxoIndex = sourceTxoIndex;
 		this.address = address;
 		this.amount = amount;
 	}
 	
-	public static Hash hash(TXI txi) {
-		return hash(txi.getSourceTxoId(), txi.getSourceTxoIndex());
+	public static Hash hash(Network network, TXI txi) {
+		return hash(network, txi.getSourceTxoId(), txi.getSourceTxoIndex());
 	}
 	
-	public static Hash hash(Hash txoId, int txoIndex) {
-		String toHash = txoId.getUTF8String() + txoIndex;
+	public static Hash hash(Network network, Hash txoId, int txoIndex) {
+		String toHash = network + txoId.getUTF8String() + txoIndex;
 		return Hash.of(toHash);
 	}
 	
 	public String toString() {
 		return String.format("%s (%s [%d] %s:%s)\n", utxoId, sourceTxoId, sourceTxoIndex, address, amount);
+	}
+	
+	public Network getNetwork() {
+		return network;
 	}
 	
 	public Hash getUtxoId() {

@@ -45,6 +45,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import io.tokhn.core.Block;
 import io.tokhn.core.Blockchain;
 import io.tokhn.core.LocalBlock;
+import io.tokhn.core.UTXO;
 import io.tokhn.node.InvalidNetworkException;
 import io.tokhn.node.Message;
 import io.tokhn.node.Network;
@@ -57,6 +58,8 @@ import io.tokhn.node.message.PartialChainMessage;
 import io.tokhn.node.message.PartialChainRequestMessage;
 import io.tokhn.node.message.PingMessage;
 import io.tokhn.node.message.TransactionMessage;
+import io.tokhn.node.message.UtxoMessage;
+import io.tokhn.node.message.UtxoRequestMessage;
 import io.tokhn.node.message.WelcomeMessage;
 import io.tokhn.store.MapDBBlockStore;
 import io.tokhn.store.MapDBUTXOStore;
@@ -252,6 +255,12 @@ public class Daemon extends Thread {
 			broadcastMessage(partialChainRequestMessage);
 		}
 	}
+	
+	public void handleUtxoRequestMessage(UtxoRequestMessage utxoRequestMessage, Socket source) {
+		Blockchain chain = chains.get(utxoRequestMessage.getNetwork());
+		List<UTXO> utxos = chain.getUtxosForAddress(utxoRequestMessage.address);
+		sendPeerMessage(source, new UtxoMessage(utxoRequestMessage.getNetwork(), utxos));
+	}
 
 	private void sendPeerMessage(Socket peer, Message message) {
 		try {
@@ -362,6 +371,13 @@ public class Daemon extends Thread {
 						PartialChainRequestMessage partialChainRequestMessage = (PartialChainRequestMessage) read;
 						System.out.println(partialChainRequestMessage);
 						handlePartialChainRequestMessage(partialChainRequestMessage, clientSocket);
+					} else if (read instanceof UtxoMessage) {
+						UtxoMessage utxoMessage = (UtxoMessage) read;
+						System.out.println(utxoMessage);
+					} else if (read instanceof UtxoRequestMessage) {
+						UtxoRequestMessage utxoRequestMessage = (UtxoRequestMessage) read;
+						System.out.println(utxoRequestMessage);
+						handleUtxoRequestMessage(utxoRequestMessage, clientSocket);
 					}
 				}
 				ois.close();

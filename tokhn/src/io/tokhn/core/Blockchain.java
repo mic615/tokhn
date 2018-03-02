@@ -198,6 +198,14 @@ public class Blockchain {
 		}
 	}
 	
+	public UTXO getUtxo(Hash utxoId) {
+		return uStore.get(utxoId);
+	}
+	
+	public List<UTXO> getUtxosForAddress(Address address) {
+		return uStore.getUtxosForAddress(address);
+	}
+	
 	public LocalBlock getBlock(Hash hash) {
 		return bStore.get(hash);
 	}

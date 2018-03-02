@@ -23,12 +23,15 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.security.Security;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import io.tokhn.core.Address;
+import io.tokhn.core.UTXO;
 import io.tokhn.core.Wallet;
 import io.tokhn.node.Message;
 import io.tokhn.node.Network;
@@ -41,6 +44,8 @@ import io.tokhn.node.message.PartialChainMessage;
 import io.tokhn.node.message.PartialChainRequestMessage;
 import io.tokhn.node.message.PingMessage;
 import io.tokhn.node.message.TransactionMessage;
+import io.tokhn.node.message.UtxoMessage;
+import io.tokhn.node.message.UtxoRequestMessage;
 import io.tokhn.node.message.WelcomeMessage;
 import io.tokhn.store.MapDBWalletStore;
 import picocli.CommandLine;
@@ -132,6 +137,17 @@ public class Client implements Runnable {
 					} else if (read instanceof PartialChainRequestMessage) {
 						PartialChainRequestMessage partialChainRequestMessage = (PartialChainRequestMessage) read;
 						System.out.println(partialChainRequestMessage);
+					} else if (read instanceof UtxoMessage) {
+						UtxoMessage utxoMessage = (UtxoMessage) read;
+						System.out.println(utxoMessage);
+						List<UTXO> filtered = utxoMessage.utxos.stream()
+							.filter(utxo -> utxo.getAddress().equals(wallet.getAddress(network)))
+							.collect(Collectors.toList());
+						wallet.addUtxos(filtered);
+						System.out.printf("Balance has been updated for %s to %s\n", network, wallet.getBalance(network));
+					} else if (read instanceof UtxoRequestMessage) {
+						UtxoRequestMessage utxoRequestMessage = (UtxoRequestMessage) read;
+						System.out.println(utxoRequestMessage);
 					}
 				}
 				ois.close();

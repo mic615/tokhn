@@ -17,7 +17,10 @@
 package io.tokhn;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -63,10 +66,13 @@ public class Client implements Runnable {
 	private Network network = Network.TEST;
 
 	@Option(names = { "-v", "--version" }, versionHelp = true, description = "print version information and exit")
-	boolean versionRequested;
+	private boolean versionRequested;
 	
 	@Option(names = { "-g", "--generate" }, description = "generate wallet and exit")
-	boolean generateRequested;
+	private boolean generateRequested;
+	
+	private ObjectInputStream ois = null;
+	private ObjectOutputStream oos = null;
 
 	public static void main(String[] args) {
 		Security.addProvider(new BouncyCastleProvider());		
@@ -89,74 +95,76 @@ public class Client implements Runnable {
 			} else {
 				wallet = new Wallet(version, new MapDBWalletStore());
 			}
-			System.out.println("Your addresses and balances are as follows:");
-			Map<Network, Address> addresses = wallet.getAddresses();
-			for(Entry<Network, Address> entry : addresses.entrySet()) {
-				System.out.printf("Network: %s, Address: %s, Balance: %s\n", entry.getKey(), entry.getValue(), wallet.getBalance(entry.getKey()));
-			}
-			Peer[] seedPeers = network.getSeedPeers();
-			for(int itr = 0; itr < seedPeers.length; itr++) {
-				Peer peer = seedPeers[itr];
-				Socket clientSocket = new Socket();
-				clientSocket.connect(new InetSocketAddress(peer.host, peer.port), TIMEOUT);
-				ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(clientSocket.getInputStream()));
-				while(true) {
-					Object read = null;
-					try {
-						read = ois.readObject();
-					} catch (ClassNotFoundException e) {
-						System.err.println(e);
-						System.exit(-1);
-					}
-					
-					if(!validMessage((Message) read)) {
-						System.err.println("invalid message");
-					} else if(read instanceof ExitMessage) {
-						System.out.println("Goodbye!");
-						break;
-					} else if (read instanceof PingMessage) {
-						PingMessage pingMessage = (PingMessage) read;
-						System.out.println(pingMessage);
-					} else if (read instanceof DifficultyMessage) {
-						DifficultyMessage difficultyMessage = (DifficultyMessage) read;
-						System.out.println(difficultyMessage);
-					} else if (read instanceof WelcomeMessage) {
-						WelcomeMessage welcomeMessage = (WelcomeMessage) read;
-						System.out.println(welcomeMessage);
-					} else if(read instanceof TransactionMessage) {
-						TransactionMessage transactionMessage = (TransactionMessage) read;
-						System.out.println(transactionMessage);
-						//TODO: we could verify that our transaction was received
-					} else if(read instanceof BlockMessage) {
-						BlockMessage blockMessage = (BlockMessage) read;
-						System.out.println(blockMessage);
-						//TODO: maybe this is where we find our transaction embedded in a block
-					} else if (read instanceof PartialChainMessage) {
-						PartialChainMessage partialChainMessage = (PartialChainMessage) read;
-						System.out.println(partialChainMessage);
-					} else if (read instanceof PartialChainRequestMessage) {
-						PartialChainRequestMessage partialChainRequestMessage = (PartialChainRequestMessage) read;
-						System.out.println(partialChainRequestMessage);
-					} else if (read instanceof UtxoMessage) {
-						UtxoMessage utxoMessage = (UtxoMessage) read;
-						System.out.println(utxoMessage);
-						List<UTXO> filtered = utxoMessage.utxos.stream()
-							.filter(utxo -> utxo.getAddress().equals(wallet.getAddress(network)))
-							.collect(Collectors.toList());
-						wallet.addUtxos(filtered);
-						System.out.printf("Balance has been updated for %s to %s\n", network, wallet.getBalance(network));
-					} else if (read instanceof UtxoRequestMessage) {
-						UtxoRequestMessage utxoRequestMessage = (UtxoRequestMessage) read;
-						System.out.println(utxoRequestMessage);
-					}
+			System.out.printf("For %s, your address is %s and your last saved balance is %s\n", network, wallet.getAddress(network), wallet.getBalance(network));
+			
+			//just get the first one until we switch to DNS management of seeded peers
+			Peer peer = network.getSeedPeers()[0];
+			Socket clientSocket = new Socket();
+			clientSocket.connect(new InetSocketAddress(peer.host, peer.port), TIMEOUT);
+			ois = new ObjectInputStream(new BufferedInputStream(clientSocket.getInputStream()));
+			oos = new ObjectOutputStream(new BufferedOutputStream(clientSocket.getOutputStream()));
+			while(true) {
+				Object read = null;
+				try {
+					read = ois.readObject();
+				} catch (ClassNotFoundException e) {
+					System.err.println(e);
+					System.exit(-1);
 				}
-				ois.close();
-				clientSocket.close();
+				
+				if(!validMessage((Message) read)) {
+					System.err.println("invalid message");
+				} else if(read instanceof ExitMessage) {
+					System.out.println("Goodbye!");
+					break;
+				} else if (read instanceof PingMessage) {
+					PingMessage pingMessage = (PingMessage) read;
+					System.out.println(pingMessage);
+				} else if (read instanceof DifficultyMessage) {
+					DifficultyMessage difficultyMessage = (DifficultyMessage) read;
+					System.out.println(difficultyMessage);
+				} else if (read instanceof WelcomeMessage) {
+					WelcomeMessage welcomeMessage = (WelcomeMessage) read;
+					System.out.println(welcomeMessage);
+					sendMessage(new UtxoRequestMessage(network, wallet.getAddress(network)));
+				} else if(read instanceof TransactionMessage) {
+					TransactionMessage transactionMessage = (TransactionMessage) read;
+					System.out.println(transactionMessage);
+					//TODO: we could verify that our transaction was received
+				} else if(read instanceof BlockMessage) {
+					BlockMessage blockMessage = (BlockMessage) read;
+					System.out.println(blockMessage);
+					//TODO: maybe this is where we find our transaction embedded in a block
+				} else if (read instanceof PartialChainMessage) {
+					PartialChainMessage partialChainMessage = (PartialChainMessage) read;
+					System.out.println(partialChainMessage);
+				} else if (read instanceof PartialChainRequestMessage) {
+					PartialChainRequestMessage partialChainRequestMessage = (PartialChainRequestMessage) read;
+					System.out.println(partialChainRequestMessage);
+				} else if (read instanceof UtxoMessage) {
+					UtxoMessage utxoMessage = (UtxoMessage) read;
+					System.out.println(utxoMessage);
+					List<UTXO> filtered = utxoMessage.utxos.stream()
+						.filter(utxo -> utxo.getAddress().equals(wallet.getAddress(network)))
+						.collect(Collectors.toList());
+					wallet.addUtxos(filtered);
+					System.out.printf("Balance has been updated for %s to %s\n", network, wallet.getBalance(network));
+				} else if (read instanceof UtxoRequestMessage) {
+					UtxoRequestMessage utxoRequestMessage = (UtxoRequestMessage) read;
+					System.out.println(utxoRequestMessage);
+				}
 			}
+			ois.close();
+			clientSocket.close();
 		} catch (Exception e) {
 			System.err.println(e);
 			System.exit(-1);
 		}
+	}
+	
+	private void sendMessage(Object message) throws IOException {
+		oos.writeObject(message);
+		oos.flush();
 	}
 	
 	private boolean validMessage(Message message) {

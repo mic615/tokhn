@@ -31,8 +31,11 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import io.tokhn.node.InvalidNetworkException;
 import io.tokhn.node.Network;
@@ -42,17 +45,21 @@ import io.tokhn.store.WalletStore;
 
 public class Wallet implements Serializable {
 	private static final long serialVersionUID = 4678179293993780295L;
-	private final Network network;
 	private final Version version;
+	private final Map<Network, Address> addresses = new HashMap<>();
 	private final WalletStore store;
 	
-	public Wallet(Network network, Version version, WalletStore store) {
-		this.network = network;
+	public Wallet(Version version, WalletStore store) {
 		this.version = version;
 		this.store = store;
+		
+		PublicKey publicKey = store.getPublicKey();
+		if(publicKey != null) {
+			Arrays.stream(Network.values()).forEach(n -> addresses.put(n, new Address(publicKey, n)));
+		}
 	}
 	
-	public static Wallet build(Network network, Version version) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidAlgorithmParameterException, InvalidKeySpecException, InvalidNetworkException {
+	public static Wallet build(Version version) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidAlgorithmParameterException, InvalidKeySpecException, InvalidNetworkException {
 		ECGenParameterSpec ecGenSpec = new ECGenParameterSpec("prime192v1");
 		KeyPairGenerator g = KeyPairGenerator.getInstance("ECDSA", "BC");
 		g.initialize(ecGenSpec, new SecureRandom());
@@ -60,10 +67,9 @@ public class Wallet implements Serializable {
 		KeyFactory fact = KeyFactory.getInstance("ECDSA", "BC");
 		PublicKey publicKey = fact.generatePublic(new X509EncodedKeySpec(pair.getPublic().getEncoded()));
 		PrivateKey privateKey = fact.generatePrivate(new PKCS8EncodedKeySpec(pair.getPrivate().getEncoded()));
-		Address address = new Address(publicKey, network);
 		
-		Wallet wallet = new Wallet(network, version, new MapDBWalletStore(network));
-		wallet.setKeys(privateKey, publicKey, address);
+		Wallet wallet = new Wallet(version, new MapDBWalletStore());
+		wallet.setKeys(privateKey, publicKey);
 		return wallet;
 	}
 	
@@ -71,8 +77,8 @@ public class Wallet implements Serializable {
 		utxos.forEach(utxo -> store.putUtxo(utxo));
 	}
 	
-	public Token getBalance() {
-		long megas = store.getUtxos().stream().mapToLong(utxo -> utxo.getAmount().getValue()).sum();
+	public Token getBalance(Network network) {
+		long megas = store.getUtxos(network).stream().mapToLong(utxo -> utxo.getAmount().getValue()).sum();
 		return Token.valueOfInMegas(megas);
 	}
 	
@@ -81,34 +87,30 @@ public class Wallet implements Serializable {
 		return tx;
 	}
 
-	public Transaction newTx(Address to, Token amount) throws Exception {
+	public Transaction newTx(Network network, Address to, Token amount) throws Exception {
 		List<TXI> txis = new LinkedList<>();
 		List<TXO> txos = new LinkedList<>();
 		
-		List<UTXO> utxos = findUtxosForAmount(amount);
+		List<UTXO> utxos = findUtxosForAmount(network, amount);
 		long leftOver = amount.getValue();
 		for(UTXO utxo : utxos) {
 			txis.add(convertToTxi(utxo));
 			leftOver -= utxo.getAmount().getValue();
 		}
 		if(leftOver > 0) {
-			txos.add(new TXO(store.getAddress(), Token.valueOfInMegas(leftOver)));
+			txos.add(new TXO(addresses.get(network), Token.valueOfInMegas(leftOver)));
 		}
 		txos.add(new TXO(to, amount));
 		
 		return new Transaction(version, Instant.now().getEpochSecond(), txis, txos);
 	}
 	
-	public void setKeys(PrivateKey privateKey, PublicKey publicKey, Address address) {
-		store.putKeys(privateKey, publicKey, address);
-	}
-	
-	public Network getNetwork() {
-		return network;
-	}
-	
 	public Version getVersion() {
 		return version;
+	}
+	
+	public Map<Network, Address> getAddresses() {
+		return addresses;
 	}
 	
 	public PrivateKey getPrivateKey() {
@@ -119,18 +121,23 @@ public class Wallet implements Serializable {
 		return store.getPublicKey();
 	}
 
-	public Address getAddress() {
-		return store.getAddress();
+	public Address getAddress(Network network) {
+		return addresses.get(network);
+	}
+	
+	private void setKeys(PrivateKey privateKey, PublicKey publicKey) {
+		store.putKeys(privateKey, publicKey);
+		Arrays.stream(Network.values()).forEach(n -> addresses.put(n, new Address(publicKey, n)));
 	}
 	
 	private TXI convertToTxi(UTXO utxo) {
 		return new TXI(utxo.getSourceTxoId(), utxo.getSourceTxoIndex());
 	}
 	
-	private List<UTXO> findUtxosForAmount(Token amount) throws Exception {
+	private List<UTXO> findUtxosForAmount(Network network, Token amount) throws Exception {
 		List<UTXO> found = new LinkedList<>();
 		long megasFound = 0;
-		for(UTXO utxo : store.getUtxos()) {
+		for(UTXO utxo : store.getUtxos(network)) {
 			found.add(utxo);
 			megasFound += utxo.getAmount().getValue();
 			if(megasFound >= amount.getValue()) {

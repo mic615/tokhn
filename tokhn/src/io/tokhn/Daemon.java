@@ -31,9 +31,11 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -43,6 +45,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import io.tokhn.core.Block;
 import io.tokhn.core.Blockchain;
 import io.tokhn.core.LocalBlock;
+import io.tokhn.node.InvalidNetworkException;
 import io.tokhn.node.Message;
 import io.tokhn.node.Network;
 import io.tokhn.node.Peer;
@@ -65,14 +68,14 @@ import picocli.CommandLine.Option;
 public class Daemon extends Thread {
 	private static final int TIMEOUT = 5000;//in milliseconds
 	private final Map<Socket, NetworkThread> peers = Collections.synchronizedMap(new HashMap<>());
-	private Blockchain chain;
+	private Map<Network, Blockchain> chains = new HashMap<>();
 	private ServerSocket serverSocket;
 	
 	@Option(names = { "-h", "--help" }, usageHelp = true, description = "displays this help message and exit")
 	private boolean helpRequested = false;
 	
 	@Option(names = { "-n", "--network" }, required = false, description = "the network")
-	private Network network = Network.TEST;
+	private Set<Network> networks = Network.getAll();
 	
 	@Option(names = { "-P", "--port" }, required = false, description = "the local port")
 	private int PORT = 1337;
@@ -94,11 +97,14 @@ public class Daemon extends Thread {
 
 	@Override
 	public void run() {
-		chain = new Blockchain(network, network.getVersion(), new MapDBBlockStore(network), new MapDBUTXOStore(network));
+		Set<Peer> seededPeers = new HashSet<>();
+		for(Network n : networks) {
+			chains.put(n, new Blockchain(n, n.getVersion(), new MapDBBlockStore(n), new MapDBUTXOStore(n)));
+			Arrays.stream(n.getSeedPeers()).filter(peer -> !blockPeers.contains(peer.getInetAddress())).forEach(p -> seededPeers.add(p));
+		}
 
 		// this is the start of client code
-		Peer[] seededPeers = network.getSeedPeers();
-		Arrays.stream(seededPeers).filter(peer -> !blockPeers.contains(peer.getInetAddress())).forEach(peer -> {
+		seededPeers.forEach(peer -> {
 			Socket peerSocket = new Socket();
 			try {
 				if (peers.size() <= MAX_PEERS) {
@@ -116,12 +122,10 @@ public class Daemon extends Thread {
 		// this is for our background heartbeat
 		ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 		executor.scheduleWithFixedDelay(new Runnable() {
-
 			@Override
 			public void run() {
-				broadcastMessage(new PingMessage(network));
+				broadcastMessage(new PingMessage(Network.TKHN));
 			}
-			
 		}, 30, 30, TimeUnit.SECONDS);
 
 		// this is the start of server code
@@ -137,7 +141,7 @@ public class Daemon extends Thread {
 				if (peers.size() > MAX_PEERS) {
 					try {
 						ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(clientSocket.getOutputStream()));
-						oos.writeObject(new ExitMessage(network));
+						oos.writeObject(new ExitMessage(Network.TKHN));
 						oos.flush();
 						oos.close();
 					} catch (IOException e) {
@@ -155,12 +159,14 @@ public class Daemon extends Thread {
 		}
 	}
 
-	public WelcomeMessage getWelcomeMessage() {
+	public WelcomeMessage getWelcomeMessage(Network network) {
+		Blockchain chain = chains.get(network);
 		WelcomeMessage welcomeMessage = new WelcomeMessage(network, Instant.now().getEpochSecond(), chain.getDifficulty(), chain.getReward(), chain.getLatestBlock());
 		return welcomeMessage;
 	}
 
 	public void handleBlockMessage(BlockMessage blockMessage, Socket source) {
+		Blockchain chain = chains.get(blockMessage.getNetwork());
 		int chainDifficulty = chain.getDifficulty();
 		if (chainDifficulty > blockMessage.block.getDifficulty()) {
 			/*
@@ -168,7 +174,7 @@ public class Daemon extends Thread {
 			 * given that our miner is actually naive, let's tell everyone the new
 			 * difficulty
 			 */
-			broadcastMessage(new DifficultyMessage(network, chainDifficulty));
+			broadcastMessage(new DifficultyMessage(blockMessage.getNetwork(), chainDifficulty));
 		}
 		if(chain.getBlock(blockMessage.block.getHash()) != null) {
 			//we already have it so don't bother
@@ -183,6 +189,7 @@ public class Daemon extends Thread {
 	}
 
 	public void handleWelcomeMessage(WelcomeMessage welcomeMessage, Socket source) {
+		Blockchain chain = chains.get(welcomeMessage.getNetwork());
 		int chainIndex = chain.getLength();
 		int welcomeIndex = welcomeMessage.latestBlock.getIndex();
 		
@@ -190,31 +197,34 @@ public class Daemon extends Thread {
 			//someone is claiming a further along chain
 			if(welcomeIndex - chainIndex != 1) {
 				//we are missing a bunch of blocks
-				sendPeerMessage(source, new PartialChainRequestMessage(network, chainIndex + 1, welcomeIndex));
+				sendPeerMessage(source, new PartialChainRequestMessage(welcomeMessage.getNetwork(), chainIndex + 1, welcomeIndex));
 			}
 		}
 	}
 
 	public void handleDifficultyMessage(DifficultyMessage difficultyMessage, Socket source) {
+		Blockchain chain = chains.get(difficultyMessage.getNetwork());
 		int chainDifficulty = chain.getDifficulty();
 		if (difficultyMessage.difficulty < chainDifficulty) {
 			// this peer should learn about the higher difficulty
-			sendPeerMessage(source, new DifficultyMessage(network, chainDifficulty));
+			sendPeerMessage(source, new DifficultyMessage(difficultyMessage.getNetwork(), chainDifficulty));
 		}
 	}
 	
 	public void handleBlockRequestMessage(BlockRequestMessage blockRequestMessage, Socket source) {
+		Blockchain chain = chains.get(blockRequestMessage.getNetwork());
 		Block b = chain.getBlock(blockRequestMessage.hash);
 		if(b == null) {
 			//we don't have the requested block, so relay the message
 			broadcastMessage(blockRequestMessage);
 		} else {
 			//we have the requested block, so send it over
-			sendPeerMessage(source, new BlockMessage(network, b));
+			sendPeerMessage(source, new BlockMessage(blockRequestMessage.getNetwork(), b));
 		}
 	}
 	
 	public void handlePartialChainMessage(PartialChainMessage partialChainMessage) {
+		Blockchain chain = chains.get(partialChainMessage.getNetwork());
 		List<Block> blocks = partialChainMessage.blocks;
 		for(Block b : blocks) {
 			if(chain.getBlock(b.getHash()) == null) {
@@ -225,6 +235,7 @@ public class Daemon extends Thread {
 	}
 	
 	public void handlePartialChainRequestMessage(PartialChainRequestMessage partialChainRequestMessage, Socket source) {
+		Blockchain chain = chains.get(partialChainRequestMessage.getNetwork());
 		if(chain.getLength() >= partialChainRequestMessage.endIndex) {
 			//we have the requested blocks
 			LinkedList<Block> blocks = new LinkedList<>();
@@ -235,7 +246,7 @@ public class Daemon extends Thread {
 				}
 				b = chain.getBlock(b.getPreviousHash());
 			}
-			sendPeerMessage(source, new PartialChainMessage(network, blocks));
+			sendPeerMessage(source, new PartialChainMessage(partialChainRequestMessage.getNetwork(), blocks));
 		} else {
 			//we don't have the blocks, so relay the message
 			broadcastMessage(partialChainRequestMessage);
@@ -274,10 +285,17 @@ public class Daemon extends Thread {
 	private boolean validMessage(Message message) {
 		if(message == null) {
 			return false;
-		} else if (message.getNetwork() == network && message.getVersion() == network.getVersion()) {
-			return true;
 		} else {
-			return false;
+			try {
+				Network network = Network.valueOf(message.getNetwork().getId());
+				if(networks.contains(network) && network.getVersion() == message.getVersion()) {
+					return true;
+				} else {
+					return false;
+				}
+			} catch (InvalidNetworkException e) {
+				return false;
+			}
 		}
 	}
 
@@ -294,7 +312,9 @@ public class Daemon extends Thread {
 		@Override
 		public void run() {
 			try {
-				sendMessage(getWelcomeMessage());
+				for(Network n : networks) {
+					sendMessage(getWelcomeMessage(n));
+				}
 
 				ois = new ObjectInputStream(new BufferedInputStream(clientSocket.getInputStream()));
 

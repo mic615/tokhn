@@ -35,43 +35,33 @@ import org.mapdb.Serializer;
 
 import io.tokhn.codec.HashSerializer;
 import io.tokhn.codec.UTXOSerializer;
-import io.tokhn.core.Address;
 import io.tokhn.core.UTXO;
 import io.tokhn.node.InvalidNetworkException;
 import io.tokhn.node.Network;
 import io.tokhn.util.Hash;
 
 public class MapDBWalletStore implements WalletStore, AutoCloseable {
-	private final Network network;
 	private final DB db;
 	private HTreeMap<Hash, UTXO> utxos;
 	private NavigableSet<byte[]> utxoIndex;
 	private HTreeMap<String, byte[]> params;
 	private PrivateKey privateKey;
 	private PublicKey publicKey;
-	private Address address;
 	
-	public MapDBWalletStore(Network network) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException, InvalidNetworkException {
-		this.network = network;
-		db = DBMaker.fileDB("WStore-" + network.toString() + ".db").closeOnJvmShutdown().make();
+	public MapDBWalletStore() throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException, InvalidNetworkException {
+		db = DBMaker.fileDB("WStore.db").closeOnJvmShutdown().make();
 		utxos = db.hashMap("utxos").keySerializer(new HashSerializer()).valueSerializer(new UTXOSerializer()).createOrOpen();
 		utxoIndex = db.treeSet("utxoIndex").serializer(Serializer.BYTE_ARRAY).createOrOpen();
 		params = db.hashMap("params").keySerializer(Serializer.STRING).valueSerializer(Serializer.BYTE_ARRAY).createOrOpen();
 		
-		if(params.containsKey("PUBLICKEY") && params.containsKey("PRIVATEKEY") && params.containsKey("ADDRESS")) {
+		if(params.containsKey("PUBLICKEY") && params.containsKey("PRIVATEKEY")) {
 			KeyFactory fact = KeyFactory.getInstance("ECDSA", "BC");
 			PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(params.get("PRIVATEKEY"));
 			X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(params.get("PUBLICKEY"));
 			
 			privateKey = fact.generatePrivate(privateKeySpec);
 			publicKey = fact.generatePublic(publicKeySpec);
-			address = new Address(params.get("ADDRESS"));
 		}
-	}
-	
-	@Override
-	public Network getNetwork() {
-		return network;
 	}
 
 	@Override
@@ -85,13 +75,8 @@ public class MapDBWalletStore implements WalletStore, AutoCloseable {
 	}
 
 	@Override
-	public Address getAddress() {
-		return address;
-	}
-
-	@Override
-	public List<UTXO> getUtxos() {
-		return utxoIndex.stream().map(utxoId -> utxos.get(new Hash(utxoId))).collect(Collectors.toList());
+	public List<UTXO> getUtxos(Network network) {
+		return utxoIndex.stream().map(utxoId -> utxos.get(new Hash(utxoId))).filter(utxo -> utxo.getNetwork() == network).collect(Collectors.toList());
 	}
 	@Override
 	public UTXO getUtxo(Hash utxoId) {
@@ -118,14 +103,12 @@ public class MapDBWalletStore implements WalletStore, AutoCloseable {
 	}
 
 	@Override
-	public void putKeys(PrivateKey privateKey, PublicKey publicKey, Address address) {
+	public void putKeys(PrivateKey privateKey, PublicKey publicKey) {
 		this.privateKey = privateKey;
 		this.publicKey = publicKey;
-		this.address = address;
 		
 		params.put("PRIVATEKEY", privateKey.getEncoded());
 		params.put("PUBLICKEY", publicKey.getEncoded());
-		params.put("ADDRESS", address.getBytes());
 		db.commit();
 	}
 }

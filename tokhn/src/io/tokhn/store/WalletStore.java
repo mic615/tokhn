@@ -20,18 +20,15 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.List;
 
-import io.tokhn.core.Address;
 import io.tokhn.core.UTXO;
 import io.tokhn.node.Network;
 import io.tokhn.util.Hash;
 
 public interface WalletStore {
-	public Network getNetwork();
 	public PrivateKey getPrivateKey();
 	public PublicKey getPublicKey();
-	public Address getAddress();
-	public void putKeys(PrivateKey privateKey, PublicKey publicKey, Address address);
-	public List<UTXO> getUtxos();
+	public void putKeys(PrivateKey privateKey, PublicKey publicKey);
+	public List<UTXO> getUtxos(Network network);
 	public UTXO getUtxo(Hash utxoId);
 	public void putUtxo(UTXO utxo);
 	public void removeUtxo(Hash utxoId);

@@ -23,13 +23,16 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Properties;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import io.tokhn.core.Address;
 
 public enum Network implements Serializable {
-	TKHN((byte) 0x0000), TEST((byte) 0xFFFF);
+	TKHN((byte) 0x00), TEST((byte) 0xFF);
 	
 	private final String CHARITY_PUBLIC_KEY = "MEkwEwYHKoZIzj0CAQYIKoZIzj0DAQEDMgAEnVXogujT/TEPj2c1JbuJxpa6ZZ8YUcBoqLfvn1M13/CNEI9boWJKiSjCLUwlgjz1";
 	private final byte id;
@@ -44,6 +47,10 @@ public enum Network implements Serializable {
 	
 	public Version getVersion() {
 		return Version.valueOf(getProperties().getProperty("VERSION"));
+	}
+	
+	public static Set<Network> getAll() {
+		return Arrays.stream(values()).collect(Collectors.toSet());
 	}
 	
 	public static Network valueOf(byte id) throws InvalidNetworkException {

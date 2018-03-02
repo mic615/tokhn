@@ -160,7 +160,7 @@ public class Blockchain {
 			 * transaction won't verify.
 			 */
 			Token totalTxiAmounts = tx.getTxis().stream()
-					.map(txi -> uStore.get(UTXO.hash(txi)))
+					.map(txi -> uStore.get(UTXO.hash(network, txi)))
 					.filter(utxo -> utxo != null)
 					.map(utxo -> utxo.getAmount())
 					.reduce(Token.ZERO, (a, b) -> Token.sum(a, b));
@@ -231,16 +231,16 @@ public class Blockchain {
 			if(tx.getTxis().size() == 0 && tx.getTxos().size() == 1) {
 				//this is a miner reward
 				TXO txo = tx.getTxos().get(0);
-				UTXO utxo = new UTXO(tx.getId(), 0, txo.getAddress(), txo.getAmount());
+				UTXO utxo = new UTXO(network, tx.getId(), 0, txo.getAddress(), txo.getAmount());
 				rewardUtxos.add(utxo);
 			} else {
 				for(TXI txi : tx.getTxis()) {
-					UTXO utxo = uStore.get(UTXO.hash(txi.getSourceTxoId(), txi.getSourceTxoIndex()));
+					UTXO utxo = uStore.get(UTXO.hash(network, txi.getSourceTxoId(), txi.getSourceTxoIndex()));
 					consumeUtxos.add(utxo);
 				}
 				for(int itr = 0; itr< tx.getTxos().size(); itr++) {
 					TXO txo = tx.getTxos().get(itr);
-					UTXO utxo = new UTXO(tx.getId(), itr, txo.getAddress(), txo.getAmount());
+					UTXO utxo = new UTXO(network, tx.getId(), itr, txo.getAddress(), txo.getAmount());
 					generateUtxos.add(utxo);
 				}
 			}
@@ -257,7 +257,7 @@ public class Blockchain {
 				Transaction charity = Transaction.rewardOf(version, network.getCharityAddress(), netMegas);
 				TXO txo = charity.getTxos().get(0);
 				block.getTransactions().add(charity);
-				rewardUtxos.add(new UTXO(charity.getId(), 0, txo.getAddress(), txo.getAmount()));
+				rewardUtxos.add(new UTXO(network, charity.getId(), 0, txo.getAddress(), txo.getAmount()));
 			}
 			//this is what is supposed to happen
 			consumeUtxos.forEach(utxo -> uStore.remove(utxo.getUtxoId()));
@@ -270,7 +270,7 @@ public class Blockchain {
 		//the theory is to remove any existing UTXOs associated with this block
 		for(Transaction tx : block.getTransactions()) {
 			for(TXI txi : tx.getTxis()) {
-				uStore.remove(UTXO.hash(txi.getSourceTxoId(), txi.getSourceTxoIndex()));
+				uStore.remove(UTXO.hash(network, txi.getSourceTxoId(), txi.getSourceTxoIndex()));
 			}
 		}
 	}

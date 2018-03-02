@@ -92,7 +92,7 @@ public class Miner extends Thread {
 	private int PORT = 1337;
 	
 	@Option(names = { "-v", "--version" }, versionHelp = true, description = "print version information and exit")
-	boolean versionRequested;
+	private boolean versionRequested;
 
 	public static void main(String[] args) {
 		Security.addProvider(new BouncyCastleProvider());

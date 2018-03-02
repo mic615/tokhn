@@ -90,7 +90,7 @@ public class Daemon extends Thread {
 	private List<InetAddress> blockPeers = new LinkedList<>();
 	
 	@Option(names = { "-v", "--version" }, versionHelp = true, description = "print version information and exit")
-	boolean versionRequested;
+	private boolean versionRequested;
 
 	public static void main(String[] args) {
 		Security.addProvider(new BouncyCastleProvider());

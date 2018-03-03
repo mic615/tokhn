@@ -107,7 +107,7 @@ public class Miner extends Thread {
 				System.err.println("Wallet needs to be generated before running Miner.");
 				System.exit(-1);
 			}
-		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeySpecException | InvalidNetworkException e) {
+		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeySpecException e) {
 			System.err.println(e);
 			System.exit(-1);
 		}

@@ -36,7 +36,6 @@ import org.mapdb.Serializer;
 import io.tokhn.codec.HashSerializer;
 import io.tokhn.codec.UTXOSerializer;
 import io.tokhn.core.UTXO;
-import io.tokhn.node.InvalidNetworkException;
 import io.tokhn.node.Network;
 import io.tokhn.util.Hash;
 
@@ -48,7 +47,7 @@ public class MapDBWalletStore implements WalletStore, AutoCloseable {
 	private PrivateKey privateKey;
 	private PublicKey publicKey;
 	
-	public MapDBWalletStore() throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException, InvalidNetworkException {
+	public MapDBWalletStore() throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException {
 		db = DBMaker.fileDB("WStore.db").closeOnJvmShutdown().make();
 		utxos = db.hashMap("utxos").keySerializer(new HashSerializer()).valueSerializer(new UTXOSerializer()).createOrOpen();
 		utxoIndex = db.treeSet("utxoIndex").serializer(Serializer.BYTE_ARRAY).createOrOpen();

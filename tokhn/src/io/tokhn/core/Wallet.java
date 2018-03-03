@@ -37,7 +37,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import io.tokhn.node.InvalidNetworkException;
 import io.tokhn.node.Network;
 import io.tokhn.node.Version;
 import io.tokhn.store.MapDBWalletStore;
@@ -59,7 +58,7 @@ public class Wallet implements Serializable {
 		}
 	}
 	
-	public static Wallet build(Version version) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidAlgorithmParameterException, InvalidKeySpecException, InvalidNetworkException {
+	public static Wallet build(Version version) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidAlgorithmParameterException, InvalidKeySpecException {
 		ECGenParameterSpec ecGenSpec = new ECGenParameterSpec("prime192v1");
 		KeyPairGenerator g = KeyPairGenerator.getInstance("ECDSA", "BC");
 		g.initialize(ecGenSpec, new SecureRandom());

@@ -7,12 +7,17 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.Security;
 import java.security.spec.InvalidKeySpecException;
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -54,7 +59,7 @@ public class Tokhn implements Runnable, AutoCloseable {
 	public void run() {
 		try {
 			wallet = new Wallet(Version.ZERO, new MapDBWalletStore());
-		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeySpecException | InvalidNetworkException e) {
+		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeySpecException e) {
 			System.err.println(e);
 			System.exit(-1);
 		}
@@ -80,6 +85,9 @@ public class Tokhn implements Runnable, AutoCloseable {
 					System.err.println("Invalid command");
 				}
 				break;
+			case GENERATE:
+				handleGenerate();
+				break;
 			case PAYADDRESS:
 				if(network != null) {
 					try {
@@ -100,6 +108,21 @@ public class Tokhn implements Runnable, AutoCloseable {
 				System.out.println("This is where the help info goes.");
 				break;
 			}
+		}
+	}
+	
+	private void handleGenerate() {
+		try {
+			wallet = Wallet.build(Version.ZERO);
+		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException | InvalidKeySpecException e) {
+			System.err.println(e);
+			System.exit(-1);
+		}
+		byte[] publicKey = Base64.getEncoder().encode(wallet.getPublicKey().getEncoded());
+		System.out.printf("Public Key: %s\nAddresses:\n", new String(publicKey, StandardCharsets.UTF_8));
+		Map<Network, Address> addresses = wallet.getAddresses();
+		for(Entry<Network, Address> entry : addresses.entrySet()) {
+			System.out.printf("Network: %s, Address: %s\n", entry.getKey(), entry.getValue());
 		}
 	}
 	
@@ -186,6 +209,6 @@ public class Tokhn implements Runnable, AutoCloseable {
 	}
 	
 	private enum Command {
-		BALANCE, EXIT, HELP, NETWORK, PAYADDRESS
+		BALANCE, EXIT, GENERATE, HELP, NETWORK, PAYADDRESS
 	}
 }

@@ -43,7 +43,7 @@ public final class Token implements Comparable<Token>, Serializable {
 		return new Token(megas);
 	}
 	
-	public static Token parsePheno(final String str) {
+	public static Token parseToken(final String str) {
         try {
             long megas = new BigDecimal(str).movePointRight(SMALLEST_UNIT_EXPONENT).longValue();
             return Token.valueOfInMegas(megas);

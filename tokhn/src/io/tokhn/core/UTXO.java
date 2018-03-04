@@ -25,26 +25,28 @@ public class UTXO implements Serializable {
 	private static final long serialVersionUID = -411556459302981328L;
 	private final Network network;
 	private final Hash utxoId;
-	private final Hash sourceTxoId;
+	private final Hash sourceTxId;
 	private final int sourceTxoIndex;
 	private final Address address;
 	private final Token amount;
+	private final String script;
 	
 	public UTXO(Network network, TXO txo, TXI txi) {
-		this(network, txi.getSourceTxoId(), txi.getSourceTxoIndex(), txo.getAddress(), txo.getAmount());
+		this(network, txi.getSourceTxId(), txi.getSourceTxoIndex(), txo.getAddress(), txo.getAmount(), txo.getScript());
 	}
 	
-	public UTXO(Network network, Hash sourceTxoId, int sourceTxoIndex, Address address, Token amount) {
+	public UTXO(Network network, Hash sourceTxId, int sourceTxoIndex, Address address, Token amount, String script) {
 		this.network = network;
-		this.utxoId = hash(network, sourceTxoId, sourceTxoIndex);
-		this.sourceTxoId = sourceTxoId;
+		this.utxoId = hash(network, sourceTxId, sourceTxoIndex);
+		this.sourceTxId = sourceTxId;
 		this.sourceTxoIndex = sourceTxoIndex;
 		this.address = address;
 		this.amount = amount;
+		this.script = script;
 	}
 	
 	public static Hash hash(Network network, TXI txi) {
-		return hash(network, txi.getSourceTxoId(), txi.getSourceTxoIndex());
+		return hash(network, txi.getSourceTxId(), txi.getSourceTxoIndex());
 	}
 	
 	public static Hash hash(Network network, Hash txoId, int txoIndex) {
@@ -53,7 +55,7 @@ public class UTXO implements Serializable {
 	}
 	
 	public String toString() {
-		return String.format("%s (%s [%d] %s:%s)\n", utxoId, sourceTxoId, sourceTxoIndex, address, amount);
+		return String.format("%s (%s [%d] %s:%s)\n", utxoId, sourceTxId, sourceTxoIndex, address, amount);
 	}
 	
 	public Network getNetwork() {
@@ -65,7 +67,7 @@ public class UTXO implements Serializable {
 	}
 	
 	public Hash getSourceTxoId() {
-		return sourceTxoId;
+		return sourceTxId;
 	}
 
 	public int getSourceTxoIndex() {
@@ -78,5 +80,9 @@ public class UTXO implements Serializable {
 
 	public Token getAmount() {
 		return amount;
+	}
+	
+	public String getScript() {
+		return script;
 	}
 }

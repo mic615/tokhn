@@ -22,7 +22,13 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Executors;
 
+import javax.script.ScriptException;
+
+import delight.nashornsandbox.NashornSandbox;
+import delight.nashornsandbox.NashornSandboxes;
+import delight.nashornsandbox.exceptions.ScriptCPUAbuseException;
 import io.tokhn.node.Network;
 import io.tokhn.node.Version;
 import io.tokhn.store.BlockStore;
@@ -174,8 +180,25 @@ public class Blockchain {
 			}
 		}
 		
-		// check that the signatures verify
-		if (!tx.getTxis().stream().allMatch(txi -> txi.verify(tx))) {
+		/*
+		 * check that TXIs verify and their scripts return true
+		 * 
+		 * since this one liner is complicated, let me break it down:
+		 * for the given transaction, get each TXI
+		 * for each TXI, verify its signature and execute its script if it has one
+		 */
+		if (!tx.getTxis().stream().allMatch(txi -> txi.verify(tx) && executeScript(tx, txi.getScript()))) {
+			return false;
+		}
+		
+		/*
+		 * check that any TXIs that point to TXOs with scripts are executed and return true
+		 * 
+		 * since this one liner is complicated, let me break it down:
+		 * for the given transaction, get the associated UTXO for each TXI
+		 * assuming we find any associated UTXOs, then execute its script if it has one
+		 */
+		if(!tx.getTxis().stream().map(txi -> uStore.get(UTXO.hash(network, txi))).filter(utxo -> utxo != null).allMatch(utxo -> executeScript(tx, utxo.getScript()))) {
 			return false;
 		}
 
@@ -239,16 +262,16 @@ public class Blockchain {
 			if(tx.getTxis().size() == 0 && tx.getTxos().size() == 1) {
 				//this is a miner reward
 				TXO txo = tx.getTxos().get(0);
-				UTXO utxo = new UTXO(network, tx.getId(), 0, txo.getAddress(), txo.getAmount());
+				UTXO utxo = new UTXO(network, tx.getId(), 0, txo.getAddress(), txo.getAmount(), null);
 				rewardUtxos.add(utxo);
 			} else {
 				for(TXI txi : tx.getTxis()) {
-					UTXO utxo = uStore.get(UTXO.hash(network, txi.getSourceTxoId(), txi.getSourceTxoIndex()));
+					UTXO utxo = uStore.get(UTXO.hash(network, txi.getSourceTxId(), txi.getSourceTxoIndex()));
 					consumeUtxos.add(utxo);
 				}
 				for(int itr = 0; itr< tx.getTxos().size(); itr++) {
 					TXO txo = tx.getTxos().get(itr);
-					UTXO utxo = new UTXO(network, tx.getId(), itr, txo.getAddress(), txo.getAmount());
+					UTXO utxo = new UTXO(network, tx.getId(), itr, txo.getAddress(), txo.getAmount(), txo.getScript());
 					generateUtxos.add(utxo);
 				}
 			}
@@ -265,7 +288,7 @@ public class Blockchain {
 				Transaction charity = Transaction.rewardOf(version, network.getCharityAddress(), netMegas);
 				TXO txo = charity.getTxos().get(0);
 				block.getTransactions().add(charity);
-				rewardUtxos.add(new UTXO(network, charity.getId(), 0, txo.getAddress(), txo.getAmount()));
+				rewardUtxos.add(new UTXO(network, charity.getId(), 0, txo.getAddress(), txo.getAmount(), null));
 			}
 			//this is what is supposed to happen
 			consumeUtxos.forEach(utxo -> uStore.remove(utxo.getUtxoId()));
@@ -278,7 +301,7 @@ public class Blockchain {
 		//the theory is to remove any existing UTXOs associated with this block
 		for(Transaction tx : block.getTransactions()) {
 			for(TXI txi : tx.getTxis()) {
-				uStore.remove(UTXO.hash(network, txi.getSourceTxoId(), txi.getSourceTxoIndex()));
+				uStore.remove(UTXO.hash(network, txi.getSourceTxId(), txi.getSourceTxoIndex()));
 			}
 		}
 	}
@@ -366,5 +389,24 @@ public class Blockchain {
 			}
 		}
 		return blocks;
+	}
+	
+	private boolean executeScript(Transaction tx, String script) {
+		if(script != null) {
+			NashornSandbox sandbox = NashornSandboxes.create();
+			sandbox.inject("transaction", tx);
+			sandbox.setMaxCPUTime(5000);
+			sandbox.setMaxMemory(1024*1024);
+			sandbox.setMaxPreparedStatements(30);
+			sandbox.setExecutor(Executors.newSingleThreadExecutor());
+			try {
+				return (boolean) sandbox.eval(script);
+			} catch (ScriptCPUAbuseException | ScriptException e) {
+				System.err.println(e);
+				return false;
+			}
+		} else {
+			return true;
+		}
 	}
 }

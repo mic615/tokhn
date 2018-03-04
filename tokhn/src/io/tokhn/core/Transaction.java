@@ -44,10 +44,10 @@ public class Transaction implements Comparable<Transaction>, Serializable {
 	public static Hash hash(long timestamp, List<TXI> txis, List<TXO> txos) {
 		/*
 		 * create a stream of transactionIns
-		 * map a transactionIn to a concatenation of outId and outIndex
+		 * map a transactionIn to a concatenation of outId, outIndex, and script
 		 * reduce to a concatenation of the above
 		 */
-		String ins = txis.stream().map(t -> t.getSourceTxoId().toString() + t.getSourceTxoIndex()).reduce("", (a, b) -> a + b);
+		String ins = txis.stream().map(t -> t.getSourceTxId().toString() + t.getSourceTxoIndex() + t.getScript()).reduce("", (a, b) -> a + b);
 		/*
 		 * create a stream of transactionOuts
 		 * map a transactionOut to a concatenation of address and amount

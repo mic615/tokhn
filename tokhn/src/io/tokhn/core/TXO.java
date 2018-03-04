@@ -22,10 +22,16 @@ public class TXO implements Serializable {
 	private static final long serialVersionUID = 7299197994111134207L;
 	private final Address address;
 	private final Token amount;
+	private final String script;
 	
 	public TXO(Address address, Token amount) {
+		this(address, amount, null);
+	}
+	
+	public TXO(Address address, Token amount, String script) {
 		this.address = address;
 		this.amount = amount;
+		this.script = script;
 	}
 
 	public Address getAddress() {
@@ -34,5 +40,9 @@ public class TXO implements Serializable {
 
 	public Token getAmount() {
 		return amount;
+	}
+	
+	public String getScript() {
+		return script;
 	}
 }

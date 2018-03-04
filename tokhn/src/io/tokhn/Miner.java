@@ -208,7 +208,7 @@ public class Miner extends Thread {
 				TXO txo = tx.getTxos().get(0);
 				//make sure this is our reward
 				if(txo.getAddress().equals(wallet.getAddress(block.getNetwork()))) {
-					rewards.add(new UTXO(block.getNetwork(), tx.getId(), 0, txo.getAddress(), txo.getAmount()));
+					rewards.add(new UTXO(block.getNetwork(), tx.getId(), 0, txo.getAddress(), txo.getAmount(), null));
 				}
 			}
 		}

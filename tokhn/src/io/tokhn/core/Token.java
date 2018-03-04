@@ -53,7 +53,7 @@ public final class Token implements Comparable<Token>, Serializable {
     }
 	
 	public String toString() {
-		return "‽" + new BigDecimal(value).movePointLeft(SMALLEST_UNIT_EXPONENT);
+		return "¤" + new BigDecimal(value).movePointLeft(SMALLEST_UNIT_EXPONENT);
     }
 	
 	public long getValue() {

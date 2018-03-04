@@ -392,9 +392,9 @@ public class Blockchain {
 		if(script != null) {
 			NashornSandbox sandbox = NashornSandboxes.create();
 			sandbox.inject("transaction", tx);
-			sandbox.setMaxCPUTime(5000);
-			sandbox.setMaxMemory(1024*1024);
-			sandbox.setMaxPreparedStatements(30);
+			sandbox.setMaxCPUTime(network.getParams().getMaxCpuTime());
+			sandbox.setMaxMemory(network.getParams().getMaxMemory());
+			sandbox.setMaxPreparedStatements(network.getParams().getMaxPreparedStatements());
 			sandbox.setExecutor(Executors.newSingleThreadExecutor());
 			try {
 				return (boolean) sandbox.eval(script);

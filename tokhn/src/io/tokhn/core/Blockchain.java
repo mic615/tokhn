@@ -17,7 +17,6 @@
 package io.tokhn.core;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -50,12 +49,7 @@ public class Blockchain {
 		this.uStore = uStore;
 		latestBlock = bStore.getLatestBlock();
 		if(latestBlock == null || !isValidChain()) {
-			long genesisTime = network.getParams().getGenesisTime();
-			ArrayList<Transaction> transactions = new ArrayList<>();
-			List<TXO> txos = new LinkedList<>();
-			txos.add(new TXO(network.getParams().getGenesisAddress(), network.getParams().getGensisBlockReward()));
-			transactions.add(new Transaction(version, genesisTime, new LinkedList<>(), txos));
-			genesisBlock = new LocalBlock(new Block(network, version, 0, Hash.EMPTY_HASH, genesisTime, transactions, 1, 0), this);
+			genesisBlock = new LocalBlock(network.getParams().getGenesisBlock(), this);
 			storeAndProcess(genesisBlock);
 			latestBlock = genesisBlock;
 		}

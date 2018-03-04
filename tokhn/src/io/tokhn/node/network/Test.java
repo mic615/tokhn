@@ -16,14 +16,27 @@
 
 package io.tokhn.node.network;
 
-import io.tokhn.core.Address;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
+import io.tokhn.core.Block;
+import io.tokhn.core.TXO;
+import io.tokhn.core.Token;
+import io.tokhn.core.Transaction;
 import io.tokhn.node.Network;
 import io.tokhn.node.NetworkParams;
+import io.tokhn.util.Hash;
 
 public class Test implements NetworkParams {
 	
-	public Address getGenesisAddress() {
-		return Network.TEST.getCharityAddress();
+	public Block getGenesisBlock() {
+		long genesisTime = 1514764800; //this is Unix time
+		ArrayList<Transaction> transactions = new ArrayList<>();
+		List<TXO> txos = new LinkedList<>();
+		txos.add(new TXO(Network.TKHN.getCharityAddress(), Token.ONE));
+		transactions.add(new Transaction(getVersion(), genesisTime, new LinkedList<>(), txos));
+		return new Block(Network.TKHN, getVersion(), 0, Hash.EMPTY_HASH, genesisTime, transactions, 1, 0);
 	}
 	
 	public int getBlockGenerationInterval() {

@@ -16,12 +16,12 @@
 
 package io.tokhn.node;
 
-import io.tokhn.core.Address;
+import io.tokhn.core.Block;
 import io.tokhn.core.Token;
 
 public interface NetworkParams {
 	
-	public Address getGenesisAddress();
+	public Block getGenesisBlock();
 	
 	default int getBlockGenerationInterval() {
 		return 600; //this is in seconds

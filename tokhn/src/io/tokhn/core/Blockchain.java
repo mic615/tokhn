@@ -36,9 +36,6 @@ import io.tokhn.store.UTXOStore;
 import io.tokhn.util.Hash;
 
 public class Blockchain {
-	private static final int BLOCK_GENERATION_INTERVAL = 600; //this is in seconds
-	private static final int DIFFICULTY_ADJUSTMENT_INTERVAL = 5; //this is in increments
-	private static final int VALID_DRIFT = 2 * 60 * 60; //this is in seconds
 	private final Network network;
 	private final Version version;
 	private final BlockStore bStore;
@@ -53,10 +50,10 @@ public class Blockchain {
 		this.uStore = uStore;
 		latestBlock = bStore.getLatestBlock();
 		if(latestBlock == null || !isValidChain()) {
-			long genesisTime = 1514764800;
+			long genesisTime = network.getParams().getGenesisTime();
 			ArrayList<Transaction> transactions = new ArrayList<>();
 			List<TXO> txos = new LinkedList<>();
-			txos.add(new TXO(network.getCharityAddress(), Token.ONE));
+			txos.add(new TXO(network.getParams().getGenesisAddress(), network.getParams().getGensisBlockReward()));
 			transactions.add(new Transaction(version, genesisTime, new LinkedList<>(), txos));
 			genesisBlock = new LocalBlock(new Block(network, version, 0, Hash.EMPTY_HASH, genesisTime, transactions, 1, 0), this);
 			storeAndProcess(genesisBlock);
@@ -112,7 +109,7 @@ public class Blockchain {
 	
 	public int getDifficulty() {
 		LocalBlock latestBlock = getLatestBlock();
-		if(latestBlock.getIndex() % DIFFICULTY_ADJUSTMENT_INTERVAL == 0 && latestBlock.getIndex() != 0) {
+		if(latestBlock.getIndex() % network.getParams().getDifficultyAdjustmentInterval() == 0 && latestBlock.getIndex() != 0) {
 			return getAdjustedDifficulty();
 		} else {
 			return latestBlock.getDifficulty();
@@ -140,7 +137,7 @@ public class Blockchain {
 			return false;
 		} else if(!previousBlock.getHash().equals(block.getPreviousHash())) {
 			return false;
-		} else if(block.getTimestamp() < previousBlock.getTimestamp() - VALID_DRIFT || block.getTimestamp() > Instant.now().getEpochSecond() + VALID_DRIFT) {
+		} else if(block.getTimestamp() < previousBlock.getTimestamp() - network.getParams().getValidDrift() || block.getTimestamp() > Instant.now().getEpochSecond() + network.getParams().getValidDrift()) {
 			//a new block can't be before the previous block and it shouldn't be from the future either
 			return false;
 		} else if(!Block.hash(block.getIndex(), previousBlock.getHash(), block.getTimestamp(), block.getTransactions(), block.getDifficulty(), block.getNonce()).equals(block.getHash())) {
@@ -315,10 +312,10 @@ public class Blockchain {
 
 	private int getAdjustedDifficulty() {
 		LocalBlock prevAdjustmentBlock = null;
-		for(int itr = 1; itr != DIFFICULTY_ADJUSTMENT_INTERVAL; itr++) {
+		for(int itr = 1; itr != network.getParams().getDifficultyAdjustmentInterval(); itr++) {
 			prevAdjustmentBlock = getBlock(getLatestBlock().getPreviousHash());
 		}
-		int timeExpected = BLOCK_GENERATION_INTERVAL * DIFFICULTY_ADJUSTMENT_INTERVAL;
+		int timeExpected = network.getParams().getBlockGenerationInterval() * network.getParams().getDifficultyAdjustmentInterval();
 		long timeTaken = getLatestBlock().getTimestamp() - prevAdjustmentBlock.getTimestamp();
 		
 		if(timeTaken < timeExpected / 2) {

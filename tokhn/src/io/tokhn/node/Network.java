@@ -25,11 +25,12 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import io.tokhn.core.Address;
+import io.tokhn.node.network.Test;
+import io.tokhn.node.network.Tokhn;
 
 public enum Network implements Serializable {
 	TKHN((byte) 0x00), TEST((byte) 0xFF);
@@ -46,7 +47,7 @@ public enum Network implements Serializable {
 	}
 	
 	public Version getVersion() {
-		return Version.valueOf(getProperties().getProperty("VERSION"));
+		return getParams().getVersion();
 	}
 	
 	public static Set<Network> getAll() {
@@ -62,17 +63,17 @@ public enum Network implements Serializable {
 		throw new InvalidNetworkException();
 	}
 	
-	public Properties getProperties() {
-		Properties props = new Properties();
+	public NetworkParams getParams() {
 		switch(this) {
 			case TKHN:
-				props.setProperty("VERSION", "ZERO");
-				return props;
+				return new Tokhn();
 			case TEST:
-				props.setProperty("VERSION", "ZERO");
-				return props;
+				return new Test();
+			default:
+				System.err.println("Missing case statement for Network");
+				System.exit(-1);
+				return null;
 		}
-		return null;
 	}
 	
 	public Address getCharityAddress() {
@@ -83,7 +84,8 @@ public enum Network implements Serializable {
 			X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKey);
 			address = new Address(fact.generatePublic(publicKeySpec), this);
 		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeySpecException e) {
-			e.printStackTrace();
+			System.err.println(e);
+			System.exit(-1);
 		}
 		
 		return address;

@@ -35,13 +35,15 @@ public class Transaction implements Comparable<Transaction>, Serializable {
 	private final List<TXO> txos;
 	
 	public Transaction(Version version, long timestamp, List<TXI> txis, List<TXO> txos) {
-		this(version, timestamp, Type.REGULAR, txis, txos);
-	}
-	
-	public Transaction(Version version, long timestamp, Type type, List<TXI> txis, List<TXO> txos) {
+		if(txis.isEmpty() && txos.size() == 1) {
+			this.type = Type.REWARD;
+		} else if(txis.stream().anyMatch(txi -> txi.getScript() != null) || txos.stream().anyMatch(txo -> txo.getScript() != null)) {
+			this.type = Type.FEE;
+		} else {
+			this.type = Type.REGULAR;
+		}
 		this.version = version;
 		this.timestamp = timestamp;
-		this.type = type;
 		this.txis = txis;
 		this.txos = txos;
 		id = hash(timestamp, type, txis, txos);
@@ -95,7 +97,7 @@ public class Transaction implements Comparable<Transaction>, Serializable {
 	private static Transaction rewardOf(Version version, Address address, Token amount) {
 		List<TXO> txos = new LinkedList<>();
 		txos.add(new TXO(address, amount));
-		return new Transaction(version, Instant.now().getEpochSecond(), Type.REWARD, new LinkedList<>(), txos);
+		return new Transaction(version, Instant.now().getEpochSecond(), new LinkedList<>(), txos);
 	}
 	
 	public List<Address> getAllAddresses() {

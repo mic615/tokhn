@@ -30,6 +30,7 @@ import javax.script.ScriptException;
 import delight.nashornsandbox.NashornSandbox;
 import delight.nashornsandbox.NashornSandboxes;
 import delight.nashornsandbox.exceptions.ScriptCPUAbuseException;
+import io.tokhn.core.Transaction.Type;
 import io.tokhn.node.Network;
 import io.tokhn.node.Version;
 import io.tokhn.store.BlockStore;
@@ -145,12 +146,15 @@ public class Blockchain {
 		return true;
 	}
 	
+	//TODO: does this need to validate transactions that aren't in the latest block?
 	public boolean isValidTransaction(Transaction tx) {
 		if (!Transaction.hash(tx.getTimestamp(), tx.getType(), tx.getTxis(), tx.getTxos()).equals(tx.getId())) {
 			return false;
-		} else if(tx.getTxis().size() == 0 && tx.getTxos().size() == 1) {
+		} else if(tx.getType() == Type.REWARD) {
 			//this is a miner reward
-			//TODO: verify the correct reward
+			if(!tx.getTxos().get(0).getAmount().equals(Token.valueOfInOnes(getReward()))) {
+				return false;
+			}
 		} else {
 			/*
 			 * we want to find all the UTXOs associated with the TXIs, but we might not find

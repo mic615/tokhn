@@ -130,7 +130,7 @@ public class Wallet implements Serializable {
 	}
 	
 	private TXI convertToTxi(UTXO utxo) {
-		return new TXI(utxo.getSourceTxoId(), utxo.getSourceTxoIndex());
+		return new TXI(utxo.getSourceTxoId(), utxo.getSourceTxoIndex(), utxo.getScript());
 	}
 	
 	private List<UTXO> findUtxosForAmount(Network network, Token amount) throws Exception {

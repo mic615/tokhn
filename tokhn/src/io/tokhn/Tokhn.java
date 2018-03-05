@@ -57,13 +57,6 @@ public class Tokhn implements Runnable, AutoCloseable {
 
 	@Override
 	public void run() {
-		try {
-			wallet = new Wallet(Version.ZERO, new MapDBWalletStore());
-		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeySpecException e) {
-			System.err.println(e);
-			System.exit(-1);
-		}
-		
 		while(true) {
 			System.out.print("Command: ");
 			String input = scanner.nextLine();
@@ -86,7 +79,9 @@ public class Tokhn implements Runnable, AutoCloseable {
 				}
 				break;
 			case GENERATE:
-				handleGenerate();
+				if(wallet == null) {
+					handleGenerate();
+				}
 				break;
 			case PAYADDRESS:
 				if(network != null) {
@@ -127,6 +122,7 @@ public class Tokhn implements Runnable, AutoCloseable {
 	}
 	
 	private void handleBalance() {
+		openWallet();
 		sendMessage(new UtxoRequestMessage(network, wallet.getAddress(network)));
 		while(true) {
 			try {
@@ -150,6 +146,7 @@ public class Tokhn implements Runnable, AutoCloseable {
 	}
 	
 	private void handlePayAddress(Address address, Token amount) {
+		openWallet();
 		try {
 			sendMessage(new TransactionMessage(network, wallet.newTx(network, address, amount)));
 			while(true) {
@@ -185,6 +182,17 @@ public class Tokhn implements Runnable, AutoCloseable {
 			oos.flush();
 		} catch (IOException e) {
 			System.err.println(e);
+		}
+	}
+	
+	private void openWallet() {
+		if(wallet != null) {
+			try {
+				wallet = new Wallet(Version.ZERO, new MapDBWalletStore());
+			} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeySpecException e) {
+				System.err.println(e);
+				System.exit(-1);
+			}
 		}
 	}
 	

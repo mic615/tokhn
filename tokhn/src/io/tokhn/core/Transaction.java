@@ -30,30 +30,55 @@ public class Transaction implements Comparable<Transaction>, Serializable {
 	private final Version version;
 	private final Hash id;
 	private final long timestamp;
+	private final Type type;
 	private final List<TXI> txis;
 	private final List<TXO> txos;
 	
 	public Transaction(Version version, long timestamp, List<TXI> txis, List<TXO> txos) {
-		this.version = version;
-		this.timestamp = timestamp;
-		this.txis = txis;
-		this.txos = txos;
-		id = hash(timestamp, txis, txos);
+		this(version, timestamp, Type.REGULAR, txis, txos);
 	}
 	
-	public static Hash hash(long timestamp, List<TXI> txis, List<TXO> txos) {
+	public Transaction(Version version, long timestamp, Type type, List<TXI> txis, List<TXO> txos) {
+		this.version = version;
+		this.timestamp = timestamp;
+		this.type = type;
+		this.txis = txis;
+		this.txos = txos;
+		id = hash(timestamp, type, txis, txos);
+	}
+	
+	public static Hash hash(long timestamp, Type type, List<TXI> txis, List<TXO> txos) {
 		/*
 		 * create a stream of transactionIns
 		 * map a transactionIn to a concatenation of outId, outIndex, and script
 		 * reduce to a concatenation of the above
 		 */
-		String ins = txis.stream().map(t -> t.getSourceTxId().toString() + t.getSourceTxoIndex() + t.getScript()).reduce("", (a, b) -> a + b);
+		String ins = txis.stream().map(txi -> {
+			switch(type) {
+				case FEE:
+				case REGULAR:
+					if(txi.getScript() != null) {
+						return txi.getSourceTxId().toString() + txi.getSourceTxoIndex() + txi.getScript();
+					} else {
+						return txi.getSourceTxId().toString() + txi.getSourceTxoIndex();
+					}
+				case REWARD:
+				default:
+					return "";
+			}
+		}).reduce("", (a, b) -> a + b);
 		/*
 		 * create a stream of transactionOuts
-		 * map a transactionOut to a concatenation of address and amount
+		 * map a transactionOut to a concatenation of address, amount, and script
 		 * reduce to a concatenation of the above
 		 */
-		String outs = txos.stream().map(t -> t.getAddress().toString() + t.getAmount()).reduce("", (a, b) -> a + b);
+		String outs = txos.stream().map(txo -> {
+			if(txo.getScript() != null) {
+				return txo.getAddress().toString() + txo.getAmount() + txo.getScript();
+			} else {
+				return txo.getAddress().toString() + txo.getAmount();
+			}
+		}).reduce("", (a, b) -> a + b);
 		
 		String toHash = timestamp + ins + outs;
 		return Hash.of(toHash);
@@ -70,7 +95,7 @@ public class Transaction implements Comparable<Transaction>, Serializable {
 	private static Transaction rewardOf(Version version, Address address, Token amount) {
 		List<TXO> txos = new LinkedList<>();
 		txos.add(new TXO(address, amount));
-		return new Transaction(version, Instant.now().getEpochSecond(), new LinkedList<>(), txos);
+		return new Transaction(version, Instant.now().getEpochSecond(), Type.REWARD, new LinkedList<>(), txos);
 	}
 	
 	public List<Address> getAllAddresses() {
@@ -87,6 +112,10 @@ public class Transaction implements Comparable<Transaction>, Serializable {
 	
 	public long getTimestamp() {
 		return timestamp;
+	}
+	
+	public Type getType() {
+		return type;
 	}
 
 	public List<TXI> getTxis() {
@@ -117,5 +146,9 @@ public class Transaction implements Comparable<Transaction>, Serializable {
 	@Override
 	public int compareTo(Transaction o) {
 		return id.compareTo(o.getId());
+	}
+	
+	public enum Type {
+		FEE, REGULAR, REWARD
 	}
 }

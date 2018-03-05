@@ -144,7 +144,7 @@ public class Blockchain {
 	}
 	
 	public boolean isValidTransaction(Transaction tx) {
-		if (!Transaction.hash(tx.getTimestamp(), tx.getTxis(), tx.getTxos()).equals(tx.getId())) {
+		if (!Transaction.hash(tx.getTimestamp(), tx.getType(), tx.getTxis(), tx.getTxos()).equals(tx.getId())) {
 			return false;
 		} else if(tx.getTxis().size() == 0 && tx.getTxos().size() == 1) {
 			//this is a miner reward

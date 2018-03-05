@@ -317,7 +317,8 @@ public class Blockchain {
 		if(timeTaken < timeExpected / 2) {
 			return prevAdjustmentBlock.getDifficulty() + 1;
 		} else if(timeTaken > timeExpected * 2) {
-			return prevAdjustmentBlock.getDifficulty() - 1;
+			int newDifficulty = prevAdjustmentBlock.getDifficulty() - 1;
+			return newDifficulty >= 1 ? newDifficulty : 1;
 		} else {
 			return prevAdjustmentBlock.getDifficulty();
 		}

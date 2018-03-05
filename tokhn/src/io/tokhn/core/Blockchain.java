@@ -21,8 +21,10 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import javax.script.Invocable;
 import javax.script.ScriptException;
 
 import delight.nashornsandbox.NashornSandbox;
@@ -384,15 +386,19 @@ public class Blockchain {
 	
 	private boolean executeScript(Transaction tx, String script) {
 		if(script != null) {
+			ExecutorService executor = Executors.newSingleThreadExecutor();
 			NashornSandbox sandbox = NashornSandboxes.create();
-			sandbox.inject("transaction", tx);
 			sandbox.setMaxCPUTime(network.getParams().getMaxCpuTime());
 			sandbox.setMaxMemory(network.getParams().getMaxMemory());
 			sandbox.setMaxPreparedStatements(network.getParams().getMaxPreparedStatements());
-			sandbox.setExecutor(Executors.newSingleThreadExecutor());
+			sandbox.setExecutor(executor);
 			try {
-				return (boolean) sandbox.eval(script);
-			} catch (ScriptCPUAbuseException | ScriptException e) {
+				sandbox.eval(script);
+				Invocable invocable = sandbox.getSandboxedInvocable();
+				Object result = invocable.invokeFunction("handleTx", tx);
+				executor.shutdown();
+				return (boolean) result;
+			} catch (ScriptCPUAbuseException | ScriptException | NoSuchMethodException e) {
 				System.err.println(e);
 				return false;
 			}

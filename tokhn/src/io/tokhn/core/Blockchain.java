@@ -52,7 +52,7 @@ public class Blockchain {
 		latestBlock = bStore.getLatestBlock();
 		if(latestBlock == null || !isValidChain()) {
 			genesisBlock = new LocalBlock(network.getParams().getGenesisBlock(), this);
-			storeAndProcess(genesisBlock);
+			processAndStore(genesisBlock);
 			latestBlock = genesisBlock;
 		}
 	}
@@ -62,7 +62,7 @@ public class Blockchain {
 			return false;
 		} else if(block.getPreviousHash().equals(getLatestBlock().getHash()) && isValidBlock(block, getLatestBlock())) {
 			//new latest block
-			latestBlock = storeAndProcess(block);
+			latestBlock = processAndStore(block);
 			return true;
 		}
 		
@@ -71,7 +71,7 @@ public class Blockchain {
 			//this must be a branch block
 			System.out.println("Branch block found");
 			if(isValidBlock(block, prevBlock)) {
-				LocalBlock newLatest = storeAndProcess(block);
+				LocalBlock newLatest = processAndStore(block);
 				if(getLatestBlock().getAggregatedDifficulty().compareTo(newLatest.getAggregatedDifficulty()) == -1) {
 					//this is from a better chain
 					System.out.println("Branch block is from superior chain");
@@ -299,10 +299,10 @@ public class Blockchain {
 		}
 	}
 	
-	private LocalBlock storeAndProcess(Block block) {
+	private LocalBlock processAndStore(Block block) {
 		LocalBlock lb = new LocalBlock(block, this);
-		bStore.put(lb);
 		processBlockTransactions(lb);
+		bStore.put(lb);
 		return lb;
 	}
 

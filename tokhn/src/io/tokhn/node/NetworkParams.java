@@ -17,7 +17,6 @@
 package io.tokhn.node;
 
 import io.tokhn.core.Block;
-import io.tokhn.core.Token;
 
 public interface NetworkParams {
 	
@@ -45,14 +44,6 @@ public interface NetworkParams {
 	
 	default int getMaxPreparedStatements() {
 		return 30;
-	}
-	
-	default long getGenesisTime() {
-		return 1514764800; //this is Unix time
-	}
-	
-	default Token getGensisBlockReward() {
-		return Token.ONE;
 	}
 	
 	default Version getVersion() {

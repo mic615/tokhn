@@ -57,7 +57,7 @@ public class UTXO implements Serializable {
 	}
 	
 	public static Hash hash(Network network, Hash txoId, int txoIndex) {
-		String toHash = network + txoId.getUTF8String() + txoIndex;
+		String toHash = network + txoId.toString() + txoIndex;
 		return Hash.of(toHash);
 	}
 	

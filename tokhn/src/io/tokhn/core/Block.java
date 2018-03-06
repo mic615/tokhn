@@ -70,7 +70,7 @@ public class Block implements Comparable<Block>, Serializable {
 	}
 	
 	public static Hash hash(int index, Hash previousHash, long timestamp, List<Transaction> transactions, int difficulty, long nonce) {
-		String toHash = index + previousHash.getUTF8String() + timestamp + hashTransactions(transactions).getUTF8String() + difficulty + nonce;
+		String toHash = index + previousHash.toString() + timestamp + hashTransactions(transactions).toString() + difficulty + nonce;
 		return Hash.of(toHash);
 	}
 	
@@ -80,7 +80,7 @@ public class Block implements Comparable<Block>, Serializable {
 		 * map a transaction id to its UTF8 string format
 		 * reduce to a concatenation of transaction ids
 		 */
-		String TXs = transactions.stream().map(t -> t.getId().getUTF8String()).reduce("", (a, b) -> a + b);
+		String TXs = transactions.stream().map(t -> t.getId().toString()).reduce("", (a, b) -> a + b);
 		return Hash.of(TXs);
 	}
 	

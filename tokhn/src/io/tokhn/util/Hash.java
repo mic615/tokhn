@@ -74,20 +74,12 @@ public class Hash implements Comparable<Hash>, Serializable {
 		return result;
 	}
 
-	public String getUTF8String() {
-		return new String(bytes, StandardCharsets.UTF_8);
-	}
-
 	public byte[] getBytes() {
 		return bytes;
 	}
 
 	public String toString() {
-		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < bytes.length; i++) {
-			sb.append(String.format("%02X", bytes[i]));
-		}
-		return sb.toString().toLowerCase();
+		return new String(bytes, StandardCharsets.UTF_8);
 	}
 
 	private int numberOfLeadingZeros(byte value) {

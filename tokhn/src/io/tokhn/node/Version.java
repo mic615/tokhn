@@ -30,4 +30,13 @@ public enum Version implements Serializable {
 	public byte getId() {
 		return id;
 	}
+	
+	public static Version valueOf(byte id) throws InvalidVersionException {
+		for(Version v : Version.values()) {
+			if(v.getId() == id) {
+				return v;
+			}
+		}
+		throw new InvalidVersionException();
+	}
 }

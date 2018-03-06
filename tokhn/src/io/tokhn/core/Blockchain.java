@@ -259,7 +259,7 @@ public class Blockchain {
 			if(tx.getTxis().size() == 0 && tx.getTxos().size() == 1) {
 				//this is a miner reward
 				TXO txo = tx.getTxos().get(0);
-				UTXO utxo = new UTXO(network, version, tx.getId(), 0, txo.getAddress(), txo.getAmount(), null);
+				UTXO utxo = new UTXO(network, version, tx.getId(), 0, txo.getAddress(), txo.getAmount());
 				rewardUtxos.add(utxo);
 			} else {
 				for(TXI txi : tx.getTxis()) {
@@ -285,7 +285,7 @@ public class Blockchain {
 				Transaction charity = Transaction.rewardOf(version, network.getCharityAddress(), netMegas);
 				TXO txo = charity.getTxos().get(0);
 				block.getTransactions().add(charity);
-				rewardUtxos.add(new UTXO(network, version, charity.getId(), 0, txo.getAddress(), txo.getAmount(), null));
+				rewardUtxos.add(new UTXO(network, version, charity.getId(), 0, txo.getAddress(), txo.getAmount()));
 			}
 			//this is what is supposed to happen
 			consumeUtxos.forEach(utxo -> uStore.remove(utxo.getUtxoId()));
@@ -390,7 +390,7 @@ public class Blockchain {
 	}
 	
 	private boolean executeScript(Transaction tx, String script) {
-		if(script != null) {
+		if(script != null && !script.isEmpty()) {
 			ExecutorService executor = Executors.newSingleThreadExecutor();
 			NashornSandbox sandbox = NashornSandboxes.create();
 			sandbox.setMaxCPUTime(network.getParams().getMaxCpuTime());

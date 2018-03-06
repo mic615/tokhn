@@ -37,6 +37,10 @@ public class UTXO implements Serializable {
 		this(network, version, txi.getSourceTxId(), txi.getSourceTxoIndex(), txo.getAddress(), txo.getAmount(), txo.getScript());
 	}
 	
+	public UTXO(Network network, Version version, Hash sourceTxId, int sourceTxoIndex, Address address, Token amount) {
+		this(network, version, sourceTxId, sourceTxoIndex, address, amount, "");
+	}
+	
 	public UTXO(Network network, Version version, Hash sourceTxId, int sourceTxoIndex, Address address, Token amount, String script) {
 		this.network = network;
 		this.version = version;

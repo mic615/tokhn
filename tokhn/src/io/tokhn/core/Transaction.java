@@ -37,7 +37,7 @@ public class Transaction implements Comparable<Transaction>, Serializable {
 	public Transaction(Version version, long timestamp, List<TXI> txis, List<TXO> txos) {
 		if(txis.isEmpty() && txos.size() == 1) {
 			this.type = Type.REWARD;
-		} else if(txis.stream().anyMatch(txi -> txi.getScript() != null) || txos.stream().anyMatch(txo -> txo.getScript() != null)) {
+		} else if(txis.stream().anyMatch(txi -> !txi.getScript().isEmpty()) || txos.stream().anyMatch(txo -> !txo.getScript().isEmpty())) {
 			this.type = Type.FEE;
 		} else {
 			this.type = Type.REGULAR;
@@ -59,11 +59,7 @@ public class Transaction implements Comparable<Transaction>, Serializable {
 			switch(type) {
 				case FEE:
 				case REGULAR:
-					if(txi.getScript() != null) {
-						return txi.getSourceTxId().toString() + txi.getSourceTxoIndex() + txi.getScript();
-					} else {
-						return txi.getSourceTxId().toString() + txi.getSourceTxoIndex();
-					}
+					return txi.getSourceTxId().toString() + txi.getSourceTxoIndex() + txi.getScript();
 				case REWARD:
 				default:
 					return "";
@@ -74,13 +70,7 @@ public class Transaction implements Comparable<Transaction>, Serializable {
 		 * map a transactionOut to a concatenation of address, amount, and script
 		 * reduce to a concatenation of the above
 		 */
-		String outs = txos.stream().map(txo -> {
-			if(txo.getScript() != null) {
-				return txo.getAddress().toString() + txo.getAmount() + txo.getScript();
-			} else {
-				return txo.getAddress().toString() + txo.getAmount();
-			}
-		}).reduce("", (a, b) -> a + b);
+		String outs = txos.stream().map(txo -> txo.getAddress().toString() + txo.getAmount() + txo.getScript()).reduce("", (a, b) -> a + b);
 		
 		String toHash = timestamp + ins + outs;
 		return Hash.of(toHash);

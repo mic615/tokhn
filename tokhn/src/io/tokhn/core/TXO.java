@@ -25,7 +25,7 @@ public class TXO implements Serializable {
 	private final String script;
 	
 	public TXO(Address address, Token amount) {
-		this(address, amount, null);
+		this(address, amount, "");
 	}
 	
 	public TXO(Address address, Token amount, String script) {

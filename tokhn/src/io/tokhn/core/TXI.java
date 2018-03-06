@@ -48,7 +48,7 @@ public class TXI implements Serializable {
 	private byte[] signature;
 	
 	public TXI(Hash sourceTxId, int sourceTxoIndex) {
-		this(sourceTxId, sourceTxoIndex, null);
+		this(sourceTxId, sourceTxoIndex, "");
 	}
 
 	public TXI(Hash sourceTxId, int sourceTxoIndex, String script) {
@@ -117,10 +117,6 @@ public class TXI implements Serializable {
 	}
 	
 	private byte[] getData(Transaction tx) {
-		if(script != null) {
-			return Arrays.concatenate(tx.getId().getBytes(), getSourceTxId().getBytes(), script.getBytes());
-		} else {
-			return Arrays.concatenate(tx.getId().getBytes(), getSourceTxId().getBytes());
-		}
+		return Arrays.concatenate(tx.getId().getBytes(), getSourceTxId().getBytes(), script.getBytes());
 	}
 }

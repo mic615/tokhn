@@ -259,7 +259,7 @@ public class Blockchain {
 			if(tx.getTxis().size() == 0 && tx.getTxos().size() == 1) {
 				//this is a miner reward
 				TXO txo = tx.getTxos().get(0);
-				UTXO utxo = new UTXO(network, tx.getId(), 0, txo.getAddress(), txo.getAmount(), null);
+				UTXO utxo = new UTXO(network, version, tx.getId(), 0, txo.getAddress(), txo.getAmount(), null);
 				rewardUtxos.add(utxo);
 			} else {
 				for(TXI txi : tx.getTxis()) {
@@ -268,7 +268,7 @@ public class Blockchain {
 				}
 				for(int itr = 0; itr< tx.getTxos().size(); itr++) {
 					TXO txo = tx.getTxos().get(itr);
-					UTXO utxo = new UTXO(network, tx.getId(), itr, txo.getAddress(), txo.getAmount(), txo.getScript());
+					UTXO utxo = new UTXO(network, version, tx.getId(), itr, txo.getAddress(), txo.getAmount(), txo.getScript());
 					generateUtxos.add(utxo);
 				}
 			}
@@ -285,7 +285,7 @@ public class Blockchain {
 				Transaction charity = Transaction.rewardOf(version, network.getCharityAddress(), netMegas);
 				TXO txo = charity.getTxos().get(0);
 				block.getTransactions().add(charity);
-				rewardUtxos.add(new UTXO(network, charity.getId(), 0, txo.getAddress(), txo.getAmount(), null));
+				rewardUtxos.add(new UTXO(network, version, charity.getId(), 0, txo.getAddress(), txo.getAmount(), null));
 			}
 			//this is what is supposed to happen
 			consumeUtxos.forEach(utxo -> uStore.remove(utxo.getUtxoId()));

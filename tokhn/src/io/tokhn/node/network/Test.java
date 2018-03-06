@@ -34,9 +34,9 @@ public class Test implements NetworkParams {
 		long genesisTime = 1514764800; //this is Unix time
 		ArrayList<Transaction> transactions = new ArrayList<>();
 		List<TXO> txos = new LinkedList<>();
-		txos.add(new TXO(Network.TKHN.getCharityAddress(), Token.ONE));
+		txos.add(new TXO(Network.TEST.getCharityAddress(), Token.ONE));
 		transactions.add(new Transaction(getVersion(), genesisTime, new LinkedList<>(), txos));
-		return new Block(Network.TKHN, getVersion(), 0, Hash.EMPTY_HASH, genesisTime, transactions, 1, 0);
+		return new Block(Network.TEST, getVersion(), 0, Hash.EMPTY_HASH, genesisTime, transactions, 1, 0);
 	}
 	
 	public int getBlockGenerationInterval() {

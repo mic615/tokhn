@@ -19,8 +19,6 @@ package io.tokhn.core;
 import java.io.Serializable;
 import java.math.BigDecimal;
 
-import io.tokhn.util.Hash;
-
 public final class Token implements Comparable<Token>, Serializable {
 	private static final long serialVersionUID = 853323352792314991L;
 	private static final long TOKEN_VALUE = 1000000; //10^6

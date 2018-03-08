@@ -19,6 +19,8 @@ package io.tokhn.core;
 import java.io.Serializable;
 import java.math.BigDecimal;
 
+import io.tokhn.util.Hash;
+
 public final class Token implements Comparable<Token>, Serializable {
 	private static final long serialVersionUID = 853323352792314991L;
 	private static final long TOKEN_VALUE = 1000000; //10^6
@@ -71,5 +73,22 @@ public final class Token implements Comparable<Token>, Serializable {
 	@Override
 	public int compareTo(Token o) {
 		return Long.compare(this.getValue(), o.getValue());
+	}
+	
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		} else if (o == null) {
+			return false;
+		} else if (getClass() != o.getClass()) {
+			return false;
+		}
+
+		Token other = (Token) o;
+		if (this.getValue() != other.getValue()) {
+			return false;
+		}
+		return true;
 	}
 }

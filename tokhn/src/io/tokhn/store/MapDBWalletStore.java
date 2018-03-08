@@ -16,6 +16,7 @@
 
 package io.tokhn.store;
 
+import java.io.File;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
@@ -48,7 +49,11 @@ public class MapDBWalletStore implements WalletStore, AutoCloseable {
 	private PublicKey publicKey;
 	
 	public MapDBWalletStore() throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException {
-		db = DBMaker.fileDB("WStore.db").closeOnJvmShutdown().make();
+		this(new File("WStore.db"));
+	}
+	
+	public MapDBWalletStore(File file) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException {
+		db = DBMaker.fileDB(file).closeOnJvmShutdown().make();
 		utxos = db.hashMap("utxos").keySerializer(new HashSerializer()).valueSerializer(new UTXOSerializer()).createOrOpen();
 		utxoIndex = db.treeSet("utxoIndex").serializer(Serializer.BYTE_ARRAY).createOrOpen();
 		params = db.hashMap("params").keySerializer(Serializer.STRING).valueSerializer(Serializer.BYTE_ARRAY).createOrOpen();

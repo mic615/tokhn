@@ -60,6 +60,10 @@ public final class Token implements Comparable<Token>, Serializable {
         return value;
     }
 	
+	public double getDecimalValue() {
+		return (double) value / TOKEN_VALUE;
+	}
+	
 	public int smallestUnitExponent() {
         return SMALLEST_UNIT_EXPONENT;
     }

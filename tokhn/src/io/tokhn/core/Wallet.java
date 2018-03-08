@@ -81,6 +81,14 @@ public class Wallet implements Serializable {
 		return Token.valueOfInMegas(megas);
 	}
 	
+	public Map<Network, Token> getBalances() {
+		Map<Network, Token> balances = new HashMap<>();
+		for(Network n : Network.values()) {
+			balances.put(n, getBalance(n));
+		}
+		return balances;
+	}
+	
 	public Transaction sign(Transaction tx) {
 		tx.getTxis().stream().forEach(txi -> txi.sign(tx, store.getPrivateKey()));
 		return tx;

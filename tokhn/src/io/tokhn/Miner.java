@@ -213,8 +213,10 @@ public class Miner extends Thread {
 			}
 		}
 		Token reward = rewards.stream().map(utxo -> utxo.getAmount()).reduce(Token.ZERO, (a, b) -> Token.sum(a, b));
-		wallet.addUtxos(rewards);
-		System.out.printf("Earned a reward of %s; wallet balace is now %s\n", reward, wallet.getBalance(block.getNetwork()));
+		if(reward.compareTo(Token.ZERO) > 0) {
+			wallet.addUtxos(rewards);
+			System.out.printf("Earned a reward of %s; wallet balace is now %s\n", reward, wallet.getBalance(block.getNetwork()));
+		}
 	}
 
 	private static enum State {

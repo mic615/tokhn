@@ -30,6 +30,6 @@ public class BlockMessage extends AbstractMessage {
 	
 	public String toString() {
 		String relay = getRelayHosts().stream().reduce("", (a, b) -> a + "->" + b);
-		return String.format("%s (NET:%s, VER:%s, BCK:%s) [%s]", getClass().getSimpleName(), getNetwork(), getVersion(), block, relay);
+		return String.format("%s (NET:%s, BCK:%s) [%s]", getClass().getSimpleName(), getNetwork(), block, relay);
 	}
 }

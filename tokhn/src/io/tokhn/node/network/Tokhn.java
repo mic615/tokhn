@@ -38,7 +38,7 @@ public class Tokhn implements NetworkParams {
 		ArrayList<Transaction> transactions = new ArrayList<>();
 		List<TXO> txos = new LinkedList<>();
 		txos.add(new TXO(Network.TKHN.getCharityAddress(), Token.ONE));
-		transactions.add(new Transaction(getVersion(), genesisTime, new LinkedList<>(), txos));
-		return new Block(Network.TKHN, getVersion(), 0, Hash.EMPTY_HASH, genesisTime, transactions, 1, 0);
+		transactions.add(new Transaction(genesisTime, new LinkedList<>(), txos));
+		return new Block(Network.TKHN, 0, Hash.EMPTY_HASH, genesisTime, transactions, 1, 0);
 	}
 }

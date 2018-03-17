@@ -45,8 +45,4 @@ public interface NetworkParams {
 	default int getMaxPreparedStatements() {
 		return 30;
 	}
-	
-	default Version getVersion() {
-		return Version.ZERO;
-	}
 }

@@ -39,7 +39,6 @@ import io.tokhn.core.Wallet;
 import io.tokhn.node.Message;
 import io.tokhn.node.Network;
 import io.tokhn.node.Peer;
-import io.tokhn.node.Version;
 import io.tokhn.node.message.BlockMessage;
 import io.tokhn.node.message.DifficultyMessage;
 import io.tokhn.node.message.ExitMessage;
@@ -81,10 +80,9 @@ public class Client implements Runnable {
 
 	@Override
 	public void run() {
-		Version version = network.getVersion();
 		try {
 			if(generateRequested) {
-				wallet = Wallet.build(version);
+				wallet = Wallet.build();
 				byte[] publicKey = Base64.getEncoder().encode(wallet.getPublicKey().getEncoded());
 				System.out.printf("Public Key: %s\nAddresses:\n", new String(publicKey, StandardCharsets.UTF_8));
 				Map<Network, Address> addresses = wallet.getAddresses();
@@ -93,7 +91,7 @@ public class Client implements Runnable {
 				}
 				System.exit(0);
 			} else {
-				wallet = new Wallet(version, new MapDBWalletStore());
+				wallet = new Wallet(new MapDBWalletStore());
 			}
 			System.out.printf("For %s, your address is %s and your last saved balance is %s\n", network, wallet.getAddress(network), wallet.getBalance(network));
 			
@@ -170,7 +168,7 @@ public class Client implements Runnable {
 	private boolean validMessage(Message message) {
 		if(message == null) {
 			return false;
-		} else if (message.getNetwork() == network && message.getVersion() == network.getVersion()) {
+		} else if (message.getNetwork() == network) {
 			return true;
 		} else {
 			return false;

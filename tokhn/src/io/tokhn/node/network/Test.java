@@ -35,8 +35,8 @@ public class Test implements NetworkParams {
 		ArrayList<Transaction> transactions = new ArrayList<>();
 		List<TXO> txos = new LinkedList<>();
 		txos.add(new TXO(Network.TEST.getCharityAddress(), Token.ONE));
-		transactions.add(new Transaction(getVersion(), genesisTime, new LinkedList<>(), txos));
-		return new Block(Network.TEST, getVersion(), 0, Hash.EMPTY_HASH, genesisTime, transactions, 1, 0);
+		transactions.add(new Transaction(genesisTime, new LinkedList<>(), txos));
+		return new Block(Network.TEST, 0, Hash.EMPTY_HASH, genesisTime, transactions, 1, 0);
 	}
 	
 	public int getBlockGenerationInterval() {

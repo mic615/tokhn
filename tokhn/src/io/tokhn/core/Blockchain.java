@@ -32,22 +32,19 @@ import delight.nashornsandbox.NashornSandboxes;
 import delight.nashornsandbox.exceptions.ScriptCPUAbuseException;
 import io.tokhn.core.Transaction.Type;
 import io.tokhn.node.Network;
-import io.tokhn.node.Version;
 import io.tokhn.store.BlockStore;
 import io.tokhn.store.UTXOStore;
 import io.tokhn.util.Hash;
 
 public class Blockchain {
 	private final Network network;
-	private final Version version;
 	private final BlockStore bStore;
 	private final UTXOStore uStore;
 	private LocalBlock genesisBlock = null;
 	private LocalBlock latestBlock = null;
 	
-	public Blockchain(Network network, Version version, BlockStore bStore, UTXOStore uStore) {
+	public Blockchain(Network network, BlockStore bStore, UTXOStore uStore) {
 		this.network = network;
-		this.version = version;
 		this.bStore = bStore;
 		this.uStore = uStore;
 		latestBlock = bStore.getLatestBlock();
@@ -246,10 +243,6 @@ public class Blockchain {
 		return network;
 	}
 
-	public Version getVersion() {
-		return version;
-	}
-
 	private void processBlockTransactions(LocalBlock block) {
 		List<UTXO> consumeUtxos = new LinkedList<>();
 		List<UTXO> generateUtxos = new LinkedList<>();
@@ -259,7 +252,7 @@ public class Blockchain {
 			if(tx.getTxis().size() == 0 && tx.getTxos().size() == 1) {
 				//this is a miner reward
 				TXO txo = tx.getTxos().get(0);
-				UTXO utxo = new UTXO(network, version, tx.getId(), 0, txo.getAddress(), txo.getAmount());
+				UTXO utxo = new UTXO(network, tx.getId(), 0, txo.getAddress(), txo.getAmount());
 				rewardUtxos.add(utxo);
 			} else {
 				for(TXI txi : tx.getTxis()) {
@@ -268,7 +261,7 @@ public class Blockchain {
 				}
 				for(int itr = 0; itr< tx.getTxos().size(); itr++) {
 					TXO txo = tx.getTxos().get(itr);
-					UTXO utxo = new UTXO(network, version, tx.getId(), itr, txo.getAddress(), txo.getAmount(), txo.getScript());
+					UTXO utxo = new UTXO(network, tx.getId(), itr, txo.getAddress(), txo.getAmount(), txo.getScript());
 					generateUtxos.add(utxo);
 				}
 			}
@@ -282,10 +275,10 @@ public class Blockchain {
 		} else {
 			if(netMegas > 0) {
 				//give the left over money to charity
-				Transaction charity = Transaction.rewardOf(version, network.getCharityAddress(), netMegas);
+				Transaction charity = Transaction.rewardOf(network.getCharityAddress(), netMegas);
 				TXO txo = charity.getTxos().get(0);
 				block.getTransactions().add(charity);
-				rewardUtxos.add(new UTXO(network, version, charity.getId(), 0, txo.getAddress(), txo.getAmount()));
+				rewardUtxos.add(new UTXO(network, charity.getId(), 0, txo.getAddress(), txo.getAmount()));
 			}
 			//this is what is supposed to happen
 			consumeUtxos.forEach(utxo -> uStore.remove(utxo.getUtxoId()));

@@ -22,19 +22,17 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import io.tokhn.node.Version;
 import io.tokhn.util.Hash;
 
 public class Transaction implements Comparable<Transaction>, Serializable {
 	private static final long serialVersionUID = -8510962834025629565L;
-	private final Version version;
 	private final Hash id;
 	private final long timestamp;
 	private final Type type;
 	private final List<TXI> txis;
 	private final List<TXO> txos;
 	
-	public Transaction(Version version, long timestamp, List<TXI> txis, List<TXO> txos) {
+	public Transaction(long timestamp, List<TXI> txis, List<TXO> txos) {
 		if(txis.isEmpty() && txos.size() == 1) {
 			this.type = Type.REWARD;
 		} else if(txis.stream().anyMatch(txi -> !txi.getScript().isEmpty()) || txos.stream().anyMatch(txo -> !txo.getScript().isEmpty())) {
@@ -42,7 +40,6 @@ public class Transaction implements Comparable<Transaction>, Serializable {
 		} else {
 			this.type = Type.REGULAR;
 		}
-		this.version = version;
 		this.timestamp = timestamp;
 		this.txis = txis;
 		this.txos = txos;
@@ -76,26 +73,22 @@ public class Transaction implements Comparable<Transaction>, Serializable {
 		return Hash.of(toHash);
 	}
 	
-	public static Transaction rewardOf(Version version, Address address, int ones) {
-		return rewardOf(version, address, Token.valueOfInOnes(ones));
+	public static Transaction rewardOf(Address address, int ones) {
+		return rewardOf(address, Token.valueOfInOnes(ones));
 	}
 	
-	public static Transaction rewardOf(Version version, Address address, long megas) {
-		return rewardOf(version, address, Token.valueOfInMegas(megas));
+	public static Transaction rewardOf(Address address, long megas) {
+		return rewardOf(address, Token.valueOfInMegas(megas));
 	}
 	
-	private static Transaction rewardOf(Version version, Address address, Token amount) {
+	private static Transaction rewardOf(Address address, Token amount) {
 		List<TXO> txos = new LinkedList<>();
 		txos.add(new TXO(address, amount));
-		return new Transaction(version, Instant.now().getEpochSecond(), new LinkedList<>(), txos);
+		return new Transaction(Instant.now().getEpochSecond(), new LinkedList<>(), txos);
 	}
 	
 	public List<Address> getAllAddresses() {
 		return txos.stream().map(t -> t.getAddress()).distinct().collect(Collectors.toList());
-	}
-
-	public Version getVersion() {
-		return version;
 	}
 
 	public Hash getId() {

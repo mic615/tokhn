@@ -46,10 +46,6 @@ public enum Network implements Serializable {
 		return id;
 	}
 	
-	public Version getVersion() {
-		return getParams().getVersion();
-	}
-	
 	public static Set<Network> getAll() {
 		return Arrays.stream(values()).collect(Collectors.toSet());
 	}

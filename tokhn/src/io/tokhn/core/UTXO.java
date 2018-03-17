@@ -19,13 +19,11 @@ package io.tokhn.core;
 import java.io.Serializable;
 
 import io.tokhn.node.Network;
-import io.tokhn.node.Version;
 import io.tokhn.util.Hash;
 
 public class UTXO implements Serializable {
 	private static final long serialVersionUID = -411556459302981328L;
 	private final Network network;
-	private final Version version;
 	private final Hash utxoId;
 	private final Hash sourceTxId;
 	private final int sourceTxoIndex;
@@ -33,17 +31,16 @@ public class UTXO implements Serializable {
 	private final Token amount;
 	private final String script;
 	
-	public UTXO(Network network, Version version, TXO txo, TXI txi) {
-		this(network, version, txi.getSourceTxId(), txi.getSourceTxoIndex(), txo.getAddress(), txo.getAmount(), txo.getScript());
+	public UTXO(Network network, TXO txo, TXI txi) {
+		this(network, txi.getSourceTxId(), txi.getSourceTxoIndex(), txo.getAddress(), txo.getAmount(), txo.getScript());
 	}
 	
-	public UTXO(Network network, Version version, Hash sourceTxId, int sourceTxoIndex, Address address, Token amount) {
-		this(network, version, sourceTxId, sourceTxoIndex, address, amount, "");
+	public UTXO(Network network, Hash sourceTxId, int sourceTxoIndex, Address address, Token amount) {
+		this(network, sourceTxId, sourceTxoIndex, address, amount, "");
 	}
 	
-	public UTXO(Network network, Version version, Hash sourceTxId, int sourceTxoIndex, Address address, Token amount, String script) {
+	public UTXO(Network network, Hash sourceTxId, int sourceTxoIndex, Address address, Token amount, String script) {
 		this.network = network;
-		this.version = version;
 		this.utxoId = hash(network, sourceTxId, sourceTxoIndex);
 		this.sourceTxId = sourceTxId;
 		this.sourceTxoIndex = sourceTxoIndex;
@@ -67,10 +64,6 @@ public class UTXO implements Serializable {
 	
 	public Network getNetwork() {
 		return network;
-	}
-	
-	public Version getVersion() {
-		return version;
 	}
 	
 	public Hash getUtxoId() {

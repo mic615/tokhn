@@ -12,7 +12,7 @@ public class LocalBlock extends Block{
 	private final Set<Address> aggregatedUniqueAddresses;
 	
 	public LocalBlock(Block block, Blockchain chain) {
-		super(block.getNetwork(), block.getVersion(), block.getIndex(), block.getHash(), block.getPreviousHash(), block.getTimestamp(), block.getTransactions(), block.getDifficulty(), block.getNonce());
+		super(block.getNetwork(), block.getIndex(), block.getHash(), block.getPreviousHash(), block.getTimestamp(), block.getTransactions(), block.getDifficulty(), block.getNonce());
 		aggregatedDifficulty = getAggregateDifficulty(block, chain);
 		aggregatedUniqueAddresses = new HashSet<>();
 		updateAggregatedUniqueAddresses(chain);

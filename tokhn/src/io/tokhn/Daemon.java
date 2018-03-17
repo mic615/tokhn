@@ -102,7 +102,7 @@ public class Daemon extends Thread {
 	public void run() {
 		Set<Peer> seededPeers = new HashSet<>();
 		for(Network n : networks) {
-			chains.put(n, new Blockchain(n, n.getVersion(), new MapDBBlockStore(n), new MapDBUTXOStore(n)));
+			chains.put(n, new Blockchain(n, new MapDBBlockStore(n), new MapDBUTXOStore(n)));
 			Arrays.stream(n.getSeedPeers()).filter(peer -> !blockPeers.contains(peer.getInetAddress())).forEach(p -> seededPeers.add(p));
 		}
 
@@ -297,7 +297,7 @@ public class Daemon extends Thread {
 		} else {
 			try {
 				Network network = Network.valueOf(message.getNetwork().getId());
-				if(networks.contains(network) && network.getVersion() == message.getVersion()) {
+				if(networks.contains(network)) {
 					return true;
 				} else {
 					return false;

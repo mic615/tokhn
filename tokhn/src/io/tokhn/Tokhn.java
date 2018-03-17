@@ -29,7 +29,6 @@ import io.tokhn.core.Wallet;
 import io.tokhn.node.InvalidNetworkException;
 import io.tokhn.node.Network;
 import io.tokhn.node.Peer;
-import io.tokhn.node.Version;
 import io.tokhn.node.message.BlockMessage;
 import io.tokhn.node.message.TransactionMessage;
 import io.tokhn.node.message.UtxoMessage;
@@ -108,7 +107,7 @@ public class Tokhn implements Runnable, AutoCloseable {
 	
 	private void handleGenerate() {
 		try {
-			wallet = Wallet.build(Version.ZERO);
+			wallet = Wallet.build();
 		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException | InvalidKeySpecException e) {
 			System.err.println(e);
 			System.exit(-1);
@@ -188,7 +187,7 @@ public class Tokhn implements Runnable, AutoCloseable {
 	private void openWallet() {
 		if(wallet != null) {
 			try {
-				wallet = new Wallet(Version.ZERO, new MapDBWalletStore());
+				wallet = new Wallet(new MapDBWalletStore());
 			} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeySpecException e) {
 				System.err.println(e);
 				System.exit(-1);

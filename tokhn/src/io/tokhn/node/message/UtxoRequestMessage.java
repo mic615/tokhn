@@ -30,6 +30,6 @@ public class UtxoRequestMessage extends AbstractMessage {
 	
 	public String toString() {
 		String relay = getRelayHosts().stream().reduce("", (a, b) -> a + "->" + b);
-		return String.format("%s (NET:%s, VER:%s, ADD:%s) [%s]", getClass().getSimpleName(), getNetwork(), getVersion(), address, relay);
+		return String.format("%s (NET:%s, ADD:%s) [%s]", getClass().getSimpleName(), getNetwork(), address, relay);
 	}
 }

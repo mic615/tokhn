@@ -38,18 +38,15 @@ import java.util.List;
 import java.util.Map;
 
 import io.tokhn.node.Network;
-import io.tokhn.node.Version;
 import io.tokhn.store.MapDBWalletStore;
 import io.tokhn.store.WalletStore;
 
 public class Wallet implements Serializable {
 	private static final long serialVersionUID = 4678179293993780295L;
-	private final Version version;
 	private final Map<Network, Address> addresses = new HashMap<>();
 	private final WalletStore store;
 	
-	public Wallet(Version version, WalletStore store) {
-		this.version = version;
+	public Wallet(WalletStore store) {
 		this.store = store;
 		
 		PublicKey publicKey = store.getPublicKey();
@@ -58,7 +55,7 @@ public class Wallet implements Serializable {
 		}
 	}
 	
-	public static Wallet build(Version version) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidAlgorithmParameterException, InvalidKeySpecException {
+	public static Wallet build() throws NoSuchAlgorithmException, NoSuchProviderException, InvalidAlgorithmParameterException, InvalidKeySpecException {
 		ECGenParameterSpec ecGenSpec = new ECGenParameterSpec("prime192v1");
 		KeyPairGenerator g = KeyPairGenerator.getInstance("ECDSA", "BC");
 		g.initialize(ecGenSpec, new SecureRandom());
@@ -67,7 +64,7 @@ public class Wallet implements Serializable {
 		PublicKey publicKey = fact.generatePublic(new X509EncodedKeySpec(pair.getPublic().getEncoded()));
 		PrivateKey privateKey = fact.generatePrivate(new PKCS8EncodedKeySpec(pair.getPrivate().getEncoded()));
 		
-		Wallet wallet = new Wallet(version, new MapDBWalletStore());
+		Wallet wallet = new Wallet(new MapDBWalletStore());
 		wallet.setKeys(privateKey, publicKey);
 		return wallet;
 	}
@@ -109,11 +106,7 @@ public class Wallet implements Serializable {
 		}
 		txos.add(new TXO(to, amount));
 		
-		return new Transaction(version, Instant.now().getEpochSecond(), txis, txos);
-	}
-	
-	public Version getVersion() {
-		return version;
+		return new Transaction(Instant.now().getEpochSecond(), txis, txos);
 	}
 	
 	public Map<Network, Address> getAddresses() {

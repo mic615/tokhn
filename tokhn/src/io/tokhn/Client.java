@@ -1,17 +1,17 @@
 /*
  * Copyright 2018 Matt Liotta
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 
 package io.tokhn;
@@ -38,7 +38,6 @@ import io.tokhn.core.UTXO;
 import io.tokhn.core.Wallet;
 import io.tokhn.node.Message;
 import io.tokhn.node.Network;
-import io.tokhn.node.Peer;
 import io.tokhn.node.message.BlockMessage;
 import io.tokhn.node.message.DifficultyMessage;
 import io.tokhn.node.message.ExitMessage;
@@ -56,14 +55,20 @@ import picocli.CommandLine.Option;
 
 @Command(name = "Client", version = { "Tokhn 0.0.1", "(c) 2018 Matt Liotta" }, showDefaultValues = true)
 public class Client implements Runnable {
-	private static final int TIMEOUT = 5000;//in milliseconds
+	private static final int TIMEOUT = 5000; //in milliseconds
 	private Wallet wallet = null;
 	@Option(names = { "-h", "--help" }, usageHelp = true, description = "displays this help message and exit")
 	private boolean helpRequested = false;
 	
 	@Option(names = { "-n", "--network" }, required = false, description = "the network")
 	private Network network = Network.TEST;
-
+	
+	@Option(names = { "-H", "--host" }, required = false, description = "the remote host")
+	private String HOST = network.getParams().getHost();
+	
+	@Option(names = { "-P", "--port" }, required = false, description = "the remote port")
+	private int PORT = network.getParams().getPort();
+	
 	@Option(names = { "-v", "--version" }, versionHelp = true, description = "print version information and exit")
 	private boolean versionRequested;
 	
@@ -72,12 +77,12 @@ public class Client implements Runnable {
 	
 	private ObjectInputStream ois = null;
 	private ObjectOutputStream oos = null;
-
+	
 	public static void main(String[] args) {
-		Security.addProvider(new BouncyCastleProvider());		
+		Security.addProvider(new BouncyCastleProvider());
 		CommandLine.run(new Client(), System.out, args);
 	}
-
+	
 	@Override
 	public void run() {
 		try {
@@ -95,17 +100,15 @@ public class Client implements Runnable {
 			}
 			System.out.printf("For %s, your address is %s and your last saved balance is %s\n", network, wallet.getAddress(network), wallet.getBalance(network));
 			
-			//just get the first one until we switch to DNS management of seeded peers
-			Peer peer = network.getSeedPeers()[0];
 			Socket clientSocket = new Socket();
-			clientSocket.connect(new InetSocketAddress(peer.host, peer.port), TIMEOUT);
+			clientSocket.connect(new InetSocketAddress(HOST, PORT), TIMEOUT);
 			ois = new ObjectInputStream(new BufferedInputStream(clientSocket.getInputStream()));
 			oos = new ObjectOutputStream(new BufferedOutputStream(clientSocket.getOutputStream()));
 			while(true) {
 				Object read = null;
 				try {
 					read = ois.readObject();
-				} catch (ClassNotFoundException e) {
+				} catch(ClassNotFoundException e) {
 					System.err.println(e);
 					System.exit(-1);
 				}
@@ -115,13 +118,13 @@ public class Client implements Runnable {
 				} else if(read instanceof ExitMessage) {
 					System.out.println("Goodbye!");
 					break;
-				} else if (read instanceof PingMessage) {
+				} else if(read instanceof PingMessage) {
 					PingMessage pingMessage = (PingMessage) read;
 					System.out.println(pingMessage);
-				} else if (read instanceof DifficultyMessage) {
+				} else if(read instanceof DifficultyMessage) {
 					DifficultyMessage difficultyMessage = (DifficultyMessage) read;
 					System.out.println(difficultyMessage);
-				} else if (read instanceof WelcomeMessage) {
+				} else if(read instanceof WelcomeMessage) {
 					WelcomeMessage welcomeMessage = (WelcomeMessage) read;
 					System.out.println(welcomeMessage);
 					sendMessage(new UtxoRequestMessage(network, wallet.getAddress(network)));
@@ -133,28 +136,26 @@ public class Client implements Runnable {
 					BlockMessage blockMessage = (BlockMessage) read;
 					System.out.println(blockMessage);
 					//TODO: maybe this is where we find our transaction embedded in a block
-				} else if (read instanceof PartialChainMessage) {
+				} else if(read instanceof PartialChainMessage) {
 					PartialChainMessage partialChainMessage = (PartialChainMessage) read;
 					System.out.println(partialChainMessage);
-				} else if (read instanceof PartialChainRequestMessage) {
+				} else if(read instanceof PartialChainRequestMessage) {
 					PartialChainRequestMessage partialChainRequestMessage = (PartialChainRequestMessage) read;
 					System.out.println(partialChainRequestMessage);
-				} else if (read instanceof UtxoMessage) {
+				} else if(read instanceof UtxoMessage) {
 					UtxoMessage utxoMessage = (UtxoMessage) read;
 					System.out.println(utxoMessage);
-					List<UTXO> filtered = utxoMessage.utxos.stream()
-						.filter(utxo -> utxo.getAddress().equals(wallet.getAddress(network)))
-						.collect(Collectors.toList());
+					List<UTXO> filtered = utxoMessage.utxos.stream().filter(utxo -> utxo.getAddress().equals(wallet.getAddress(network))).collect(Collectors.toList());
 					wallet.addUtxos(filtered);
 					System.out.printf("Balance has been updated for %s to %s\n", network, wallet.getBalance(network));
-				} else if (read instanceof UtxoRequestMessage) {
+				} else if(read instanceof UtxoRequestMessage) {
 					UtxoRequestMessage utxoRequestMessage = (UtxoRequestMessage) read;
 					System.out.println(utxoRequestMessage);
 				}
 			}
 			ois.close();
 			clientSocket.close();
-		} catch (Exception e) {
+		} catch(Exception e) {
 			System.err.println(e);
 			System.exit(-1);
 		}
@@ -168,7 +169,7 @@ public class Client implements Runnable {
 	private boolean validMessage(Message message) {
 		if(message == null) {
 			return false;
-		} else if (message.getNetwork() == network) {
+		} else if(message.getNetwork() == network) {
 			return true;
 		} else {
 			return false;

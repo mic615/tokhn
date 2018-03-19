@@ -86,16 +86,4 @@ public enum Network implements Serializable {
 		
 		return address;
 	}
-	
-	public Peer[] getSeedPeers() {
-		switch(this) {
-			case TKHN:
-				Peer[] tkhnPeers = {new Peer("127.0.0.1", 1337)};
-				return tkhnPeers;
-			case TEST:
-				Peer[] testPeers = {new Peer("127.0.0.1", 1337)};
-				return testPeers;
-		}
-		return null;
-	}
 }

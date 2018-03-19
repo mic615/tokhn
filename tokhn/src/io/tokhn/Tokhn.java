@@ -16,8 +16,8 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
 import java.util.Map.Entry;
+import java.util.Scanner;
 import java.util.stream.Collectors;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -28,7 +28,6 @@ import io.tokhn.core.UTXO;
 import io.tokhn.core.Wallet;
 import io.tokhn.node.InvalidNetworkException;
 import io.tokhn.node.Network;
-import io.tokhn.node.Peer;
 import io.tokhn.node.message.BlockMessage;
 import io.tokhn.node.message.TransactionMessage;
 import io.tokhn.node.message.UtxoMessage;
@@ -36,7 +35,7 @@ import io.tokhn.node.message.UtxoRequestMessage;
 import io.tokhn.store.MapDBWalletStore;
 
 public class Tokhn implements Runnable, AutoCloseable {
-	private static Scanner scanner = new Scanner( System.in );
+	private static Scanner scanner = new Scanner(System.in);
 	private Wallet wallet = null;
 	private Network network = null;
 	Socket clientSocket = null;
@@ -44,16 +43,16 @@ public class Tokhn implements Runnable, AutoCloseable {
 	private ObjectOutputStream oos = null;
 	
 	public static void main(String[] args) {
-		Security.addProvider(new BouncyCastleProvider());	
+		Security.addProvider(new BouncyCastleProvider());
 		Tokhn t = new Tokhn();
 		t.run();
 		try {
 			t.close();
-		} catch (Exception e) {
+		} catch(Exception e) {
 			e.printStackTrace();
 		}
 	}
-
+	
 	@Override
 	public void run() {
 		while(true) {
@@ -62,45 +61,45 @@ public class Tokhn implements Runnable, AutoCloseable {
 			String[] parts = input.split(" ");
 			Command c = Command.valueOf(parts[0].toUpperCase());
 			switch(c) {
-			case BALANCE:
-				if(network != null) {
-					handleBalance();
-				}
-				break;
-			case EXIT:
-				System.exit(0);
-				break;
-			case NETWORK:
-				if(parts.length == 2) {
-					network = Network.valueOf(parts[1].toUpperCase());
-				} else {
-					System.err.println("Invalid command");
-				}
-				break;
-			case GENERATE:
-				if(wallet == null) {
-					handleGenerate();
-				}
-				break;
-			case PAYADDRESS:
-				if(network != null) {
-					try {
-						if(parts.length == 3) {
-							handlePayAddress(new Address(parts[1]), Token.parseToken(parts[2]));
-						} else {
-							System.err.println("Invalid command");
-						}
-					} catch (InvalidNetworkException e) {
-						System.err.println(e);
+				case BALANCE:
+					if(network != null) {
+						handleBalance();
 					}
-				}
-				break;
-			default:
-				System.err.println("Invalid command");
-			case HELP:
-				//TODO: implement this
-				System.out.println("This is where the help info goes.");
-				break;
+					break;
+				case EXIT:
+					System.exit(0);
+					break;
+				case NETWORK:
+					if(parts.length == 2) {
+						network = Network.valueOf(parts[1].toUpperCase());
+					} else {
+						System.err.println("Invalid command");
+					}
+					break;
+				case GENERATE:
+					if(wallet == null) {
+						handleGenerate();
+					}
+					break;
+				case PAYADDRESS:
+					if(network != null) {
+						try {
+							if(parts.length == 3) {
+								handlePayAddress(new Address(parts[1]), Token.parseToken(parts[2]));
+							} else {
+								System.err.println("Invalid command");
+							}
+						} catch(InvalidNetworkException e) {
+							System.err.println(e);
+						}
+					}
+					break;
+				default:
+					System.err.println("Invalid command");
+				case HELP:
+					//TODO: implement this
+					System.out.println("This is where the help info goes.");
+					break;
 			}
 		}
 	}
@@ -108,7 +107,7 @@ public class Tokhn implements Runnable, AutoCloseable {
 	private void handleGenerate() {
 		try {
 			wallet = Wallet.build();
-		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException | InvalidKeySpecException e) {
+		} catch(NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException | InvalidKeySpecException e) {
 			System.err.println(e);
 			System.exit(-1);
 		}
@@ -126,19 +125,17 @@ public class Tokhn implements Runnable, AutoCloseable {
 		while(true) {
 			try {
 				Object read = ois.readObject();
-				if (read instanceof UtxoMessage) {
+				if(read instanceof UtxoMessage) {
 					UtxoMessage utxoMessage = (UtxoMessage) read;
-					List<UTXO> filtered = utxoMessage.utxos.stream()
-							.filter(utxo -> utxo.getAddress().equals(wallet.getAddress(network)))
-							.collect(Collectors.toList());
+					List<UTXO> filtered = utxoMessage.utxos.stream().filter(utxo -> utxo.getAddress().equals(wallet.getAddress(network))).collect(Collectors.toList());
 					wallet.addUtxos(filtered);
 					System.out.printf("Balance has been updated for %s to %s\n", network, wallet.getBalance(network));
 					break;
 				}
-			} catch (ClassNotFoundException e) {
+			} catch(ClassNotFoundException e) {
 				System.err.println(e);
 				System.exit(-1);
-			} catch (IOException e) {
+			} catch(IOException e) {
 				System.err.println(e);
 			}
 		}
@@ -151,7 +148,7 @@ public class Tokhn implements Runnable, AutoCloseable {
 			while(true) {
 				try {
 					Object read = ois.readObject();
-					if (read instanceof BlockMessage) {
+					if(read instanceof BlockMessage) {
 						BlockMessage blockMessage = (BlockMessage) read;
 						if(blockMessage.block.getTransactions().stream().anyMatch(tx -> tx.getAllAddresses().contains(wallet.getAddress(network)))) {
 							System.out.printf("Block %s contains a transaction for you.\n", blockMessage.block.getHash());
@@ -160,14 +157,14 @@ public class Tokhn implements Runnable, AutoCloseable {
 							System.out.printf("Block %s just came by, but it doesn't have your transaction.\n");
 						}
 					}
-				} catch (ClassNotFoundException e) {
+				} catch(ClassNotFoundException e) {
 					System.err.println(e);
 					System.exit(-1);
-				} catch (IOException e) {
+				} catch(IOException e) {
 					System.err.println(e);
 				}
 			}
-		} catch (Exception e) {
+		} catch(Exception e) {
 			System.err.println(e);
 		}
 	}
@@ -179,7 +176,7 @@ public class Tokhn implements Runnable, AutoCloseable {
 		try {
 			oos.writeObject(message);
 			oos.flush();
-		} catch (IOException e) {
+		} catch(IOException e) {
 			System.err.println(e);
 		}
 	}
@@ -188,7 +185,7 @@ public class Tokhn implements Runnable, AutoCloseable {
 		if(wallet != null) {
 			try {
 				wallet = new Wallet(new MapDBWalletStore());
-			} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeySpecException e) {
+			} catch(NoSuchAlgorithmException | NoSuchProviderException | InvalidKeySpecException e) {
 				System.err.println(e);
 				System.exit(-1);
 			}
@@ -197,14 +194,12 @@ public class Tokhn implements Runnable, AutoCloseable {
 	
 	private void connect() {
 		if(network != null) {
-			//just get the first one until we switch to DNS management of seeded peers
-			Peer peer = network.getSeedPeers()[0];
 			clientSocket = new Socket();
 			try {
-				clientSocket.connect(new InetSocketAddress(peer.host, peer.port), 5000);
+				clientSocket.connect(new InetSocketAddress(network.getParams().getHost(), network.getParams().getPort()), 5000);
 				ois = new ObjectInputStream(new BufferedInputStream(clientSocket.getInputStream()));
 				oos = new ObjectOutputStream(new BufferedOutputStream(clientSocket.getOutputStream()));
-			} catch (IOException e) {
+			} catch(IOException e) {
 				System.err.println(e);
 			}
 		}

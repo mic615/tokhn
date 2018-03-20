@@ -22,11 +22,11 @@ import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 
-import org.bitcoinj.core.Base58;
 import org.bouncycastle.crypto.digests.RIPEMD160Digest;
 
 import io.tokhn.node.InvalidNetworkException;
 import io.tokhn.node.Network;
+import io.tokhn.util.Base58;
 import io.tokhn.util.Hash;
 
 public class Address implements Serializable {
@@ -63,7 +63,7 @@ public class Address implements Serializable {
 	}
 	
 	public Address(String base58Address) throws InvalidNetworkException {
-		this(Base58.decodeChecked(base58Address));
+		this(Base58.decode(base58Address));
 	}
 	
 	public Address(byte[] bytes) throws InvalidNetworkException {
@@ -72,7 +72,7 @@ public class Address implements Serializable {
 	}
 	
 	public String toString() {
-		return Base58.encode(bytes);
+		return Base58.encode(getBytes());
 	}
 
 	public byte[] getBytes() {

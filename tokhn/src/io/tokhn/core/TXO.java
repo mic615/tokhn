@@ -45,4 +45,9 @@ public class TXO implements Serializable {
 	public String getScript() {
 		return script;
 	}
+	
+	@Override
+	public String toString() {
+		return String.format("%s:%s", address.toString(), amount.toString());
+	}
 }

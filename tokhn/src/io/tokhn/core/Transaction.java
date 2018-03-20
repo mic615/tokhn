@@ -46,6 +46,14 @@ public class Transaction implements Comparable<Transaction>, Serializable {
 		id = hash(timestamp, type, txis, txos);
 	}
 	
+	public Transaction(Hash id, long timestamp, Type type, List<TXI> txis, List<TXO> txos) {
+		this.id = id;
+		this.timestamp = timestamp;
+		this.type = type;
+		this.txis = txis;
+		this.txos = txos;
+	}
+	
 	public static Hash hash(long timestamp, Type type, List<TXI> txis, List<TXO> txos) {
 		/*
 		 * create a stream of transactionIns
@@ -67,7 +75,7 @@ public class Transaction implements Comparable<Transaction>, Serializable {
 		 * map a transactionOut to a concatenation of address, amount, and script
 		 * reduce to a concatenation of the above
 		 */
-		String outs = txos.stream().map(txo -> txo.getAddress().toString() + txo.getAmount() + txo.getScript()).reduce("", (a, b) -> a + b);
+		String outs = txos.stream().map(txo -> txo.getAddress().toString() + txo.getAmount().getValue() + txo.getScript()).reduce("", (a, b) -> a + b);
 		
 		String toHash = timestamp + ins + outs;
 		return Hash.of(toHash);
@@ -131,6 +139,11 @@ public class Transaction implements Comparable<Transaction>, Serializable {
 	@Override
 	public int compareTo(Transaction o) {
 		return id.compareTo(o.getId());
+	}
+	
+	@Override
+	public String toString() {
+		return String.format("%s@%d [%d:%d]", getId(), getTimestamp(), getTxis().size(), getTxos().size());
 	}
 	
 	public enum Type {

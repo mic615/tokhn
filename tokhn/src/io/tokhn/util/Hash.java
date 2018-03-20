@@ -17,12 +17,14 @@
 package io.tokhn.util;
 
 import java.io.Serializable;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 
 import org.bouncycastle.util.Arrays;
+import org.bouncycastle.util.encoders.Hex;
 
 public class Hash implements Comparable<Hash>, Serializable {
 	public static final Hash EMPTY_HASH = new Hash("0000000000000000000000000000000000000000000000000000000000000000");
@@ -37,17 +39,20 @@ public class Hash implements Comparable<Hash>, Serializable {
 		this.bytes = Arrays.copyOfRange(bytes, offset, length);
 	}
 
-	public Hash(String utf8Hash) {
-		bytes = utf8Hash.getBytes(StandardCharsets.UTF_8);
+	public Hash(String hexEncoded) {
+		bytes = Hex.decode(hexEncoded);
 	}
 
 	public static Hash of(String utf8Data) {
-		return of(utf8Data.getBytes(StandardCharsets.UTF_8));
+		return of(utf8Data, StandardCharsets.UTF_8);
+	}
+	
+	public static Hash of(String data, Charset charset) {
+		return of(data.getBytes(charset));
 	}
 
 	public static Hash of(byte[] byteData) {
 		try {
-			//MessageDigest digest = MessageDigest.getInstance("SHA3-256", "BC");
 			MessageDigest digest = MessageDigest.getInstance("SHA-512/256", "BC");
 			return new Hash(digest.digest(byteData));
 		} catch (NoSuchAlgorithmException | NoSuchProviderException e) {
@@ -79,7 +84,7 @@ public class Hash implements Comparable<Hash>, Serializable {
 	}
 
 	public String toString() {
-		return new String(bytes, StandardCharsets.UTF_8);
+		return Hex.toHexString(bytes);
 	}
 
 	private int numberOfLeadingZeros(byte value) {
@@ -109,7 +114,7 @@ public class Hash implements Comparable<Hash>, Serializable {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + java.util.Arrays.hashCode(bytes);
+		result = prime * result + Arrays.hashCode(getBytes());
 		return result;
 	}
 
@@ -124,7 +129,7 @@ public class Hash implements Comparable<Hash>, Serializable {
 		}
 
 		Hash other = (Hash) o;
-		if (!java.util.Arrays.equals(bytes, other.bytes)) {
+		if(!Arrays.areEqual(this.getBytes(), other.getBytes())) {
 			return false;
 		}
 		return true;

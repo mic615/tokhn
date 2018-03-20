@@ -17,6 +17,8 @@
 package io.tokhn.core;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
@@ -48,20 +50,25 @@ public class TXI implements Serializable {
 	private byte[] signature;
 	
 	public TXI(Hash sourceTxId, int sourceTxoIndex) {
-		this(sourceTxId, sourceTxoIndex, "");
+		this(sourceTxId, sourceTxoIndex, "", null);
 	}
 
 	public TXI(Hash sourceTxId, int sourceTxoIndex, String script) {
+		this(sourceTxId, sourceTxoIndex, script, null);
+	}
+	
+	public TXI(Hash sourceTxId, int sourceTxoIndex, String script, byte[] signature) {
 		this.sourceTxId = sourceTxId;
 		this.sourceTxoIndex = sourceTxoIndex;
 		this.script = script;
+		this.signature = signature;
 	}
 
-	public void sign(Transaction tx, PrivateKey privateKey) {
+	public void sign(PrivateKey privateKey) {
 		try {
 			Signature ecdsaSign = Signature.getInstance("SHA256withECDSA", "BC");
 			ecdsaSign.initSign(privateKey);
-			ecdsaSign.update(getData(tx));
+			ecdsaSign.update(getData());
 			signature = ecdsaSign.sign();
 		} catch (NoSuchAlgorithmException | NoSuchProviderException e) {
 			e.printStackTrace();
@@ -71,9 +78,9 @@ public class TXI implements Serializable {
 		}
 	}
 
-	public boolean verify(Transaction tx) {
+	public boolean verify() {
 		try {
-			byte[] dataBytes = getData(tx);
+			byte[] dataBytes = getData();
 			byte[] sigBytes = getSignature();
 
 			ECNamedCurveParameterSpec params = ECNamedCurveTable.getParameterSpec("prime192v1");
@@ -116,7 +123,7 @@ public class TXI implements Serializable {
 		return signature;
 	}
 	
-	private byte[] getData(Transaction tx) {
-		return Arrays.concatenate(tx.getId().getBytes(), getSourceTxId().getBytes(), script.getBytes());
+	private byte[] getData() {
+		return Arrays.concatenate(getSourceTxId().getBytes(), ByteBuffer.allocate(Integer.BYTES).putInt(getSourceTxoIndex()).array(), script.getBytes(StandardCharsets.UTF_8));
 	}
 }

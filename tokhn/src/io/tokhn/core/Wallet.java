@@ -87,7 +87,7 @@ public class Wallet implements Serializable {
 	}
 	
 	public Transaction sign(Transaction tx) {
-		tx.getTxis().stream().forEach(txi -> txi.sign(tx, store.getPrivateKey()));
+		tx.getTxis().stream().forEach(txi -> txi.sign(store.getPrivateKey()));
 		return tx;
 	}
 

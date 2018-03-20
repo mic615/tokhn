@@ -181,7 +181,7 @@ public class Blockchain {
 		 * for the given transaction, get each TXI
 		 * for each TXI, verify its signature and execute its script if it has one
 		 */
-		if (!tx.getTxis().stream().allMatch(txi -> txi.verify(tx) && executeScript(tx, txi.getScript()))) {
+		if (!tx.getTxis().stream().allMatch(txi -> txi.verify() && executeScript(tx, txi.getScript()))) {
 			return false;
 		}
 		

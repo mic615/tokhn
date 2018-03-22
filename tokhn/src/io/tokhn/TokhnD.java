@@ -31,20 +31,33 @@ import io.tokhn.node.Network;
 import io.tokhn.node.TokhnServiceImpl;
 import io.tokhn.store.MapDBBlockStore;
 import io.tokhn.store.MapDBUTXOStore;
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
-public class TokhnD {
+@Command(name = "Tokhn Daemon", version = { "Tokhn 0.0.1", "(c) 2018 Matt Liotta" }, showDefaultValues = true)
+public class TokhnD extends Thread {
 	private final static Map<Network, Blockchain> chains = new HashMap<>();
+	
+	@Option(names = { "-h", "--help" }, usageHelp = true, description = "displays this help message and exit")
+	private boolean helpRequested = false;
+	
+	@Option(names = { "-P", "--port" }, required = false, description = "the remote port")
+	private int PORT = 1337;
 
 	public static void main(String[] args) {
 		Security.addProvider(new BouncyCastleProvider());
-		
 		System.out.println("Daemon running...");
-		
+		CommandLine.run(new TokhnD(), System.out, args);
+	}
+	
+	@Override
+	public void run() {
 		Set<Network> networks = Network.getAll();
 		for(Network network: networks) {
 			chains.put(network, new Blockchain(network, new MapDBBlockStore(network), new MapDBUTXOStore(network)));
 		}
-		Server server = ServerBuilder.forPort(1337).addService(new TokhnServiceImpl(chains)).build();
+		Server server = ServerBuilder.forPort(PORT).addService(new TokhnServiceImpl(chains)).build();
 
 		try {
 			server.start();

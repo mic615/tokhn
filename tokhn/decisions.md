@@ -6,10 +6,8 @@ Design and architecture:
 * No block size limit
 * Built-in charity address
 * Left over TXIs not tied to TXOs are given to charity
-* New block every 5 minutes
+* New block every 10 minutes (configurable by Network)
 
 Implementation:
-* Should really rewrite networking code to use NIO or Netty (consider gRPC, which takes care of Netty and protocol buffers)
-* Should really rewrite serialization to use custom or Google protocol buffers
 * Should LocalBlock keep up with unique addresses to trade disk space for computation?
 * The various uses of Streams should be checked for robustness and speed

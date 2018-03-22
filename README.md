@@ -1,12 +1,12 @@
 # tokhn
 Alternative blockchain written in Java
 
-Requires Bouncy Castle
+Requires Bouncy Castle and gRPC.
 
 There are three executables:
-* Client
-* Daemon
-* Miner
+* Client (being replaced by tokhnC)
+* Daemon (being replaced by tokhnD)
+* Miner (being repleaced by tokhnM)
 
 Client:
 The Client can generate a wallet including the keys and base58 encoded address. See Client -h for command-line usage.

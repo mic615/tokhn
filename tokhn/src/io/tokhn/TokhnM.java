@@ -81,9 +81,6 @@ public class TokhnM extends Thread {
 	
 	@Option(names = { "-P", "--port" }, required = false, description = "the remote port")
 	private int PORT = 1337;
-	
-	@Option(names = { "-v", "--version" }, versionHelp = true, description = "print version information and exit")
-	private boolean versionRequested;
 
 	public static void main(String[] args) {
 		Security.addProvider(new BouncyCastleProvider());

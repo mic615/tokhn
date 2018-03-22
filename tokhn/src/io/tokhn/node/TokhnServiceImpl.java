@@ -16,6 +16,9 @@
 
 package io.tokhn.node;
 
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.spec.InvalidKeySpecException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -28,7 +31,9 @@ import io.tokhn.core.Address;
 import io.tokhn.core.Block;
 import io.tokhn.core.Blockchain;
 import io.tokhn.core.LocalBlock;
+import io.tokhn.core.Transaction;
 import io.tokhn.core.UTXO;
+import io.tokhn.core.Wallet;
 import io.tokhn.grpc.BlockModel;
 import io.tokhn.grpc.BlockRequest;
 import io.tokhn.grpc.BlockResponse;
@@ -42,6 +47,7 @@ import io.tokhn.grpc.UtxoResponse;
 import io.tokhn.grpc.WelcomeModel;
 import io.tokhn.grpc.WelcomeRequest;
 import io.tokhn.grpc.WelcomeRequest.PeerType;
+import io.tokhn.store.MapDBWalletStore;
 import io.tokhn.grpc.WelcomeResponse;
 import io.tokhn.util.GRPC;
 import io.tokhn.util.Hash;
@@ -50,9 +56,19 @@ public class TokhnServiceImpl extends TokhnServiceImplBase {
 	private static final List<StreamObserver<TransactionModel>> txObservers = new ArrayList<>();
 	private static final List<StreamObserver<BlockModel>> blockObservers = new ArrayList<>();
 	private final Map<Network, Blockchain> chains;
+	private Wallet wallet = null;
 	
 	public TokhnServiceImpl(Map<Network, Blockchain> chains) {
 		this.chains = chains;
+		try {
+			wallet = new Wallet(new MapDBWalletStore());
+			if(wallet.getPrivateKey() == null || wallet.getPublicKey() == null) {
+				System.out.println("No wallet found; internal mining rewards will go to charity. Generate a wallet to keep your own rewards.");
+			}
+		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeySpecException e) {
+			System.err.println(e);
+			System.exit(-1);
+		}
 	}
 	
 	public void getWelcome(WelcomeRequest request, StreamObserver<WelcomeResponse> responseObserver) {
@@ -130,6 +146,20 @@ public class TokhnServiceImpl extends TokhnServiceImplBase {
 	        public void onNext(TransactionModel transactionModel) {
 				for(StreamObserver<TransactionModel> observer : txObservers) {
 					observer.onNext(transactionModel);
+				}
+				
+				Network network = Network.valueOf(transactionModel.getNetwork().name());
+				Blockchain chain = chains.get(network);
+				if(network.getParams().getMaxInternalMineDifficulty() >= chain.getDifficulty()) {
+					Block latestBlock = chain.getLatestBlock();
+					List<Transaction> transactions = new LinkedList<>();
+					Address address = network.getCharityAddress();
+					if(wallet != null) {
+						address = wallet.getAddress(network);
+					}
+					transactions.add(Transaction.rewardOf(address, chain.getReward()));
+					transactions.add(GRPC.transform(transactionModel));
+					chain.addBlockToChain(Block.findBlock(network, latestBlock.getIndex() + 1, latestBlock.getHash(), transactions, chain.getDifficulty()));
 				}
 			}
 			

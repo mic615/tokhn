@@ -1,17 +1,17 @@
 /*
  * Copyright 2018 Matt Liotta
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 
 package io.tokhn.node;
@@ -29,11 +29,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import io.tokhn.core.Address;
+import io.tokhn.node.network.Pheno;
 import io.tokhn.node.network.Test;
 import io.tokhn.node.network.Tokhn;
 
 public enum Network implements Serializable {
-	TKHN((byte) 0x00), TEST((byte) 0xFF);
+	TKHN((byte) 0x00), PHNO((byte) 0x01), TEST((byte) 0xFF);
 	
 	private final String CHARITY_PUBLIC_KEY = "MEkwEwYHKoZIzj0CAQYIKoZIzj0DAQEDMgAEnVXogujT/TEPj2c1JbuJxpa6ZZ8YUcBoqLfvn1M13/CNEI9boWJKiSjCLUwlgjz1";
 	private final byte id;
@@ -41,7 +42,7 @@ public enum Network implements Serializable {
 	private Network(byte id) {
 		this.id = id;
 	}
-
+	
 	public byte getId() {
 		return id;
 	}
@@ -63,6 +64,8 @@ public enum Network implements Serializable {
 		switch(this) {
 			case TKHN:
 				return new Tokhn();
+			case PHNO:
+				return new Pheno();
 			case TEST:
 				return new Test();
 			default:
@@ -79,7 +82,7 @@ public enum Network implements Serializable {
 			byte[] publicKey = Base64.getDecoder().decode(CHARITY_PUBLIC_KEY.getBytes(StandardCharsets.UTF_8));
 			X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKey);
 			address = new Address(fact.generatePublic(publicKeySpec), this);
-		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeySpecException e) {
+		} catch(NoSuchAlgorithmException | NoSuchProviderException | InvalidKeySpecException e) {
 			System.err.println(e);
 			System.exit(-1);
 		}

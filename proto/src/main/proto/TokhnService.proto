@@ -63,6 +63,7 @@ message WelcomeResponse {
 
 enum NetworkModel {
 	TKHN = 0;
+	PHNO = 1;
 	TEST = 255;
 }
 

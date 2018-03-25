@@ -28,11 +28,12 @@ import io.tokhn.grpc.TransactionModel;
 import io.tokhn.grpc.WelcomeRequest;
 import io.tokhn.grpc.WelcomeRequest.PeerType;
 import io.tokhn.grpc.WelcomeResponse;
+import io.tokhn.node.Network;
 
 public class TokhnC {
 
 	public static void main(String[] args) {
-		ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 1337).usePlaintext(true).build();
+		ManagedChannel channel = ManagedChannelBuilder.forAddress(Network.TKHN.getParams().getHost(), Network.TKHN.getParams().getPort()).usePlaintext(true).build();
 
 		TokhnServiceGrpc.TokhnServiceBlockingStub stub = TokhnServiceGrpc.newBlockingStub(channel).withWaitForReady();
 		TokhnServiceStub async = TokhnServiceGrpc.newStub(channel).withWaitForReady();

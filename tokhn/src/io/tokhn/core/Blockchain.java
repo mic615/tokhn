@@ -158,8 +158,11 @@ public class Blockchain {
 			 * them for our purposes then, we will assume that not finding a UTXOs is going
 			 * to be okay because then the amount will be smaller than it should and the
 			 * transaction won't verify.
+			 * 
+			 * additionally, we are going to consider TXIs that verify
 			 */
 			Token totalTxiAmounts = tx.getTxis().stream()
+					.filter(txi -> txi.verify())
 					.map(txi -> uStore.get(UTXO.hash(network, txi)))
 					.filter(utxo -> utxo != null)
 					.map(utxo -> utxo.getAmount())

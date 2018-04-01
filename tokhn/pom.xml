@@ -1,9 +1,35 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>io.tokhn</groupId>
 	<artifactId>tokhn</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
+
+	<name>Tokhn</name>
+	<url>tokhn.io</url>
+	<description>Tokhn is an alternative blockchain written in Java.</description>
+
+	<licenses>
+		<license>
+			<name>The Apache Software License, Version 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+		</license>
+	</licenses>
+
+	<developers>
+		<developer>
+			<name>Matt Liotta</name>
+			<email>mliotta@r337.com</email>
+		</developer>
+	</developers>
+
+	<scm>
+		<url>https://github.com/mliotta/tokhn</url>
+		<connection>scm:git:https://github.com/mliotta/tokhn.git</connection>
+		<developerConnection>scm:git:https://github.com/mliotta/tokhn.git</developerConnection>
+	</scm>
+
 	<build>
 		<sourceDirectory>src</sourceDirectory>
 		<plugins>
@@ -13,6 +39,17 @@
 				<configuration>
 					<source>1.8</source>
 					<target>1.8</target>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifest>
+							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+						</manifest>
+					</archive>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -95,6 +132,4 @@
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 	</dependencies>
-	<name>Tokhn</name>
-	<url>tokhn.io</url>
 </project>

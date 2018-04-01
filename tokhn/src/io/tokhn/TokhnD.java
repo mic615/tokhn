@@ -18,47 +18,51 @@ package io.tokhn;
 
 import java.io.IOException;
 import java.security.Security;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
-import io.tokhn.core.Blockchain;
 import io.tokhn.node.Network;
 import io.tokhn.node.TokhnServiceImpl;
-import io.tokhn.store.MapDBBlockStore;
-import io.tokhn.store.MapDBUTXOStore;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 @Command(name = "Tokhn Daemon", version = { "Tokhn 0.0.1", "(c) 2018 Matt Liotta" }, showDefaultValues = true)
 public class TokhnD extends Thread {
-	private final static Map<Network, Blockchain> chains = new HashMap<>();
-	
 	@Option(names = { "-h", "--help" }, usageHelp = true, description = "displays this help message and exit")
 	private boolean helpRequested = false;
 	
 	@Option(names = { "-P", "--port" }, required = false, description = "the remote port")
 	private int PORT = 1337;
+	
+	@Option(names = { "-n", "--network" }, required = false, description = "the list of networks to support")
+	Set<Network> NETWORKS = Network.getAll();
 
 	public static void main(String[] args) {
 		Security.addProvider(new BouncyCastleProvider());
-		System.out.println("Daemon running...");
 		CommandLine.run(new TokhnD(), System.out, args);
 	}
 	
 	@Override
 	public void run() {
-		Set<Network> networks = Network.getAll();
-		for(Network network: networks) {
-			chains.put(network, new Blockchain(network, new MapDBBlockStore(network), new MapDBUTXOStore(network)));
+		String version = getClass().getPackage().getImplementationVersion();
+		if(version != null) {
+			System.out.println("Daemon [" + version + "] running...");
+		} else {
+			System.out.println("Daemon running...");
 		}
-		Server server = ServerBuilder.forPort(PORT).addService(new TokhnServiceImpl(chains)).build();
-
+		Server server = ServerBuilder.forPort(PORT).addService(new TokhnServiceImpl(NETWORKS)).build();
+		
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+			@Override
+			public void run() {
+				server.shutdownNow();
+			}
+		});
+		
 		try {
 			server.start();
 			server.awaitTermination();

@@ -7,10 +7,35 @@ service TokhnService {
 	rpc GetBlock(BlockRequest) returns (BlockResponse);
 	rpc GetPartialChain(PartialChainRequest) returns (PartialChainResponse);
 	rpc GetUtxos(UtxoRequest) returns (UtxoResponse);
+	rpc GeTxis(TxiRequest) returns (TxiResponse);
+	rpc GeTxos(TxoRequest) returns (TxoResponse);
 	rpc StreamTransactions(stream TransactionModel) returns (stream TransactionModel);
 	rpc StreamBlocks(stream BlockModel) returns (stream BlockModel);
 }
 
+
+message TxiRequest {
+	NetworkModel network = 1;
+	//reserving 2
+	string sourceTxId = 3;
+}
+
+message TxiResponse {
+	NetworkModel network = 1;
+	//reserving 2
+	repeated TxiModel txis = 3;
+}
+message TxoRequest {
+	NetworkModel network = 1;
+	//reserving 2
+	string sourceTxId = 3;
+}
+
+message TxoResponse {
+	NetworkModel network = 1;
+	//reserving 2
+	repeated TxoModel txos = 3;
+}
 message UtxoRequest {
 	NetworkModel network = 1;
 	//reserving 2
@@ -64,6 +89,7 @@ message WelcomeResponse {
 enum NetworkModel {
 	TKHN = 0;
 	PHNO = 1;
+	LUV = 2;
 	TEST = 255;
 }
 

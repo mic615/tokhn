@@ -22,13 +22,11 @@ import java.util.List;
 import java.util.stream.LongStream;
 
 import io.tokhn.node.Network;
-import io.tokhn.node.Version;
 import io.tokhn.util.Hash;
 
 public class Block implements Comparable<Block>, Serializable {
 	private static final long serialVersionUID = -3502917216334358464L;
 	private final Network network;
-	private final Version version;
 	private final int index;
 	private final Hash hash;
 	private final Hash previousHash;
@@ -37,13 +35,12 @@ public class Block implements Comparable<Block>, Serializable {
 	private final int difficulty;
 	private final long nonce; //bigger makes it better
 	
-	public Block(Network network, Version version, int index, Hash previousHash, long timestamp, List<Transaction> transactions, int difficulty, long nonce) {
-		this(network, version, index, hash(index, previousHash, timestamp, transactions, difficulty, nonce), previousHash, timestamp, transactions, difficulty, nonce);
+	public Block(Network network, int index, Hash previousHash, long timestamp, List<Transaction> transactions, int difficulty, long nonce) {
+		this(network, index, hash(index, previousHash, timestamp, transactions, difficulty, nonce), previousHash, timestamp, transactions, difficulty, nonce);
 	}
 	
-	public Block(Network network, Version version, int index, Hash hash, Hash previousHash, long timestamp, List<Transaction> transactions, int difficulty, long nonce) {
+	public Block(Network network, int index, Hash hash, Hash previousHash, long timestamp, List<Transaction> transactions, int difficulty, long nonce) {
 		this.network = network;
-		this.version = version;
 		this.index = index;
 		this.hash = hash;
 		this.previousHash = previousHash;
@@ -53,9 +50,9 @@ public class Block implements Comparable<Block>, Serializable {
 		this.nonce = nonce;
 	}
 	
-	public static Block findBlock(Network network, Version version, int index, Hash previousHash, List<Transaction> transactions, int difficulty) {
+	public static Block findBlock(Network network, int index, Hash previousHash, List<Transaction> transactions, int difficulty) {
 		Block result = LongStream.iterate(0, i -> i + 1).parallel()
-				.mapToObj(i -> new Block(network, version, index, previousHash, Instant.now().getEpochSecond(), transactions, difficulty, i))
+				.mapToObj(i -> new Block(network, index, previousHash, Instant.now().getEpochSecond(), transactions, difficulty, i))
 				.filter(block -> hashMatchesDifficulty(block.getHash(), difficulty)).findAny().orElse(null);
 		
 		return result;
@@ -70,7 +67,7 @@ public class Block implements Comparable<Block>, Serializable {
 	}
 	
 	public static Hash hash(int index, Hash previousHash, long timestamp, List<Transaction> transactions, int difficulty, long nonce) {
-		String toHash = index + previousHash.getUTF8String() + timestamp + hashTransactions(transactions).getUTF8String() + difficulty + nonce;
+		String toHash = index + previousHash.toString() + timestamp + hashTransactions(transactions).toString() + difficulty + nonce;
 		return Hash.of(toHash);
 	}
 	
@@ -80,7 +77,7 @@ public class Block implements Comparable<Block>, Serializable {
 		 * map a transaction id to its UTF8 string format
 		 * reduce to a concatenation of transaction ids
 		 */
-		String TXs = transactions.stream().map(t -> t.getId().getUTF8String()).reduce("", (a, b) -> a + b);
+		String TXs = transactions.stream().map(t -> t.getId().toString()).reduce("", (a, b) -> a + b);
 		return Hash.of(TXs);
 	}
 	
@@ -90,10 +87,6 @@ public class Block implements Comparable<Block>, Serializable {
 
 	public Network getNetwork() {
 		return network;
-	}
-
-	public Version getVersion() {
-		return version;
 	}
 
 	public int getIndex() {

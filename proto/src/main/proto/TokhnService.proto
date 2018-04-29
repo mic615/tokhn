@@ -1,0 +1,154 @@
+syntax = "proto3";
+option java_multiple_files = true;
+package io.tokhn.grpc;
+
+service TokhnService {
+	rpc GetWelcome(WelcomeRequest) returns (WelcomeResponse);
+	rpc GetBlock(BlockRequest) returns (BlockResponse);
+	rpc GetPartialChain(PartialChainRequest) returns (PartialChainResponse);
+	rpc GetUtxos(UtxoRequest) returns (UtxoResponse);
+	rpc GeTxis(TxiRequest) returns (TxiResponse);
+	rpc GeTxos(TxoRequest) returns (TxoResponse);
+	rpc StreamTransactions(stream TransactionModel) returns (stream TransactionModel);
+	rpc StreamBlocks(stream BlockModel) returns (stream BlockModel);
+}
+
+
+message TxiRequest {
+	NetworkModel network = 1;
+	//reserving 2
+	string sourceTxId = 3;
+}
+
+message TxiResponse {
+	NetworkModel network = 1;
+	//reserving 2
+	repeated TxiModel txis = 3;
+}
+message TxoRequest {
+	NetworkModel network = 1;
+	//reserving 2
+	string sourceTxId = 3;
+}
+
+message TxoResponse {
+	NetworkModel network = 1;
+	//reserving 2
+	repeated TxoModel txos = 3;
+}
+message UtxoRequest {
+	NetworkModel network = 1;
+	//reserving 2
+	bytes address = 3;
+}
+
+message UtxoResponse {
+	NetworkModel network = 1;
+	//reserving 2
+	repeated UtxoModel utxos = 3;
+}
+
+message PartialChainRequest {
+	NetworkModel network = 1;
+	//reserving 2
+	int32 startIndex = 3;
+	int32 endIndex = 4;
+}
+
+message PartialChainResponse {
+	NetworkModel network = 1;
+	//reserving 2
+	repeated BlockModel blocks = 3;
+}
+
+message BlockRequest {
+	NetworkModel network = 1;
+	//reserving 2
+	string hash = 3;//UTF8 encoded
+}
+
+message BlockResponse {
+	NetworkModel network = 1;
+	//reserving 2
+	BlockModel block = 3;
+}
+
+message WelcomeRequest {
+	enum PeerType {
+		NODE = 0;
+		CLIENT = 1;
+		MINER = 2;
+	}
+	PeerType peerType = 1;
+}
+
+message WelcomeResponse {
+	repeated WelcomeModel welcomes = 1;
+}
+
+enum NetworkModel {
+	TKHN = 0;
+	PHNO = 1;
+	LUV = 2;
+	TEST = 255;
+}
+
+message WelcomeModel {
+	NetworkModel network = 1;
+	//reserving 2
+	int64 timestamp = 3;
+	int32 difficulty = 4;
+	int32 reward = 5;
+	BlockModel latestBlock = 6;
+}
+
+message BlockModel {
+	NetworkModel network = 1;
+	//reserving 2
+	int32 index = 3;
+	string hash = 4;//UTF8 encoded
+	string previousHash = 5;//UTF8 encoded
+	int64 timestamp = 6;
+	repeated TransactionModel transactions = 7;
+	int32 difficulty = 8;
+	int64 nonce = 9;
+}
+
+message TransactionModel {
+	NetworkModel network = 1;
+	//reserving 2
+	string id = 3;//UTF8 encoded
+	int64 timestamp = 4;
+	enum Type {
+		FEE = 0;
+		REGULAR = 1;
+		REWARD = 2;
+	}
+	Type type = 5;
+	repeated TxiModel txis = 6;
+	repeated TxoModel txos = 7;
+}
+
+message TxiModel {
+	string sourceTxId = 1;//UTF8 encoded
+	int32 sourceTxoIndex = 2;
+	string script = 3;
+	bytes signature = 4;
+}
+
+message TxoModel {
+	string address = 1;//base58 encoded
+	int64 amount = 2;
+	string script = 3;
+}
+
+message UtxoModel  {
+	NetworkModel network = 1;
+	//reserving 2
+	string utxoId = 3;//UTF8 encoded
+	string sourceTxId = 4;//UTF8 encoded
+	int32 sourceTxoIndex = 5;
+	string address = 6;//base58 encoded
+	int64 amount = 7;
+	string script = 8;
+}

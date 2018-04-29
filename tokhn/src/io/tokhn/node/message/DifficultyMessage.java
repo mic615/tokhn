@@ -29,6 +29,6 @@ public class DifficultyMessage extends AbstractMessage {
 	
 	public String toString() {
 		String relay = getRelayHosts().stream().reduce("", (a, b) -> a + "->" + b);
-		return String.format("%s (NET:%s, VER:%s, DIF:%d) [%s]", getClass().getSimpleName(), getNetwork(), getVersion(), difficulty, relay);
+		return String.format("%s (NET:%s, DIF:%d) [%s]", getClass().getSimpleName(), getNetwork(), difficulty, relay);
 	}
 }

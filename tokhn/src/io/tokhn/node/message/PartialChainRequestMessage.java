@@ -31,6 +31,6 @@ public class PartialChainRequestMessage extends AbstractMessage {
 	
 	public String toString() {
 		String relay = getRelayHosts().stream().reduce("", (a, b) -> a + "->" + b);
-		return String.format("%s (NET:%s, VER:%s, SRT:%d END:%d) [%s]", getClass().getSimpleName(), getNetwork(), getVersion(), startIndex, endIndex, relay);
+		return String.format("%s (NET:%s, SRT:%d END:%d) [%s]", getClass().getSimpleName(), getNetwork(), startIndex, endIndex, relay);
 	}
 }

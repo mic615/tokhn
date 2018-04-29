@@ -37,20 +37,16 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import io.tokhn.node.InvalidNetworkException;
 import io.tokhn.node.Network;
-import io.tokhn.node.Version;
 import io.tokhn.store.MapDBWalletStore;
 import io.tokhn.store.WalletStore;
 
 public class Wallet implements Serializable {
 	private static final long serialVersionUID = 4678179293993780295L;
-	private final Version version;
 	private final Map<Network, Address> addresses = new HashMap<>();
 	private final WalletStore store;
 	
-	public Wallet(Version version, WalletStore store) {
-		this.version = version;
+	public Wallet(WalletStore store) {
 		this.store = store;
 		
 		PublicKey publicKey = store.getPublicKey();
@@ -59,7 +55,7 @@ public class Wallet implements Serializable {
 		}
 	}
 	
-	public static Wallet build(Version version) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidAlgorithmParameterException, InvalidKeySpecException, InvalidNetworkException {
+	public static Wallet build() throws NoSuchAlgorithmException, NoSuchProviderException, InvalidAlgorithmParameterException, InvalidKeySpecException {
 		ECGenParameterSpec ecGenSpec = new ECGenParameterSpec("prime192v1");
 		KeyPairGenerator g = KeyPairGenerator.getInstance("ECDSA", "BC");
 		g.initialize(ecGenSpec, new SecureRandom());
@@ -68,7 +64,7 @@ public class Wallet implements Serializable {
 		PublicKey publicKey = fact.generatePublic(new X509EncodedKeySpec(pair.getPublic().getEncoded()));
 		PrivateKey privateKey = fact.generatePrivate(new PKCS8EncodedKeySpec(pair.getPrivate().getEncoded()));
 		
-		Wallet wallet = new Wallet(version, new MapDBWalletStore());
+		Wallet wallet = new Wallet(new MapDBWalletStore());
 		wallet.setKeys(privateKey, publicKey);
 		return wallet;
 	}
@@ -76,14 +72,25 @@ public class Wallet implements Serializable {
 	public void addUtxos(List<UTXO> utxos) {
 		utxos.forEach(utxo -> store.putUtxo(utxo));
 	}
-	
+	public void setBalance(UTXO utxo) {
+		store.putUtxo(utxo);
+		
+	}
 	public Token getBalance(Network network) {
 		long megas = store.getUtxos(network).stream().mapToLong(utxo -> utxo.getAmount().getValue()).sum();
 		return Token.valueOfInMegas(megas);
 	}
 	
+	public Map<Network, Token> getBalances() {
+		Map<Network, Token> balances = new HashMap<>();
+		for(Network n : Network.values()) {
+			balances.put(n, getBalance(n));
+		}
+		return balances;
+	}
+	
 	public Transaction sign(Transaction tx) {
-		tx.getTxis().stream().forEach(txi -> txi.sign(tx, store.getPrivateKey()));
+		tx.getTxis().stream().forEach(txi -> txi.sign(store.getPrivateKey()));
 		return tx;
 	}
 
@@ -102,11 +109,7 @@ public class Wallet implements Serializable {
 		}
 		txos.add(new TXO(to, amount));
 		
-		return new Transaction(version, Instant.now().getEpochSecond(), txis, txos);
-	}
-	
-	public Version getVersion() {
-		return version;
+		return new Transaction(Instant.now().getEpochSecond(), txis, txos);
 	}
 	
 	public Map<Network, Address> getAddresses() {
@@ -131,7 +134,7 @@ public class Wallet implements Serializable {
 	}
 	
 	private TXI convertToTxi(UTXO utxo) {
-		return new TXI(utxo.getSourceTxoId(), utxo.getSourceTxoIndex());
+		return new TXI(utxo.getSourceTxoId(), utxo.getSourceTxoIndex(), utxo.getScript());
 	}
 	
 	private List<UTXO> findUtxosForAmount(Network network, Token amount) throws Exception {

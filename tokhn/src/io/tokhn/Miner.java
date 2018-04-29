@@ -92,7 +92,7 @@ public class Miner extends Thread {
 	private int PORT = 1337;
 	
 	@Option(names = { "-v", "--version" }, versionHelp = true, description = "print version information and exit")
-	boolean versionRequested;
+	private boolean versionRequested;
 
 	public static void main(String[] args) {
 		Security.addProvider(new BouncyCastleProvider());
@@ -102,12 +102,12 @@ public class Miner extends Thread {
 	@Override
 	public void run() {
 		try {
-			wallet = new Wallet(Network.TKHN.getVersion(), new MapDBWalletStore());
+			wallet = new Wallet(new MapDBWalletStore());
 			if(wallet.getPrivateKey() == null || wallet.getPublicKey() == null) {
 				System.err.println("Wallet needs to be generated before running Miner.");
 				System.exit(-1);
 			}
-		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeySpecException | InvalidNetworkException e) {
+		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeySpecException e) {
 			System.err.println(e);
 			System.exit(-1);
 		}
@@ -157,7 +157,7 @@ public class Miner extends Thread {
 		int difficulty = difficulties.get(network);
 		int reward = rewards.get(network);
 		Block tail = tails.get(network);
-		transactions.add(Transaction.rewardOf(network.getVersion(), wallet.getAddress(network), reward));
+		transactions.add(Transaction.rewardOf(wallet.getAddress(network), reward));
 		//add all the pending transactions if any
 		if(txs != null) {
 			txs.forEach(tx -> transactions.add(tx));
@@ -167,7 +167,7 @@ public class Miner extends Thread {
 		metric.start();
 		Block block = LongStream.iterate(0, i -> i + 1).parallel()
 				.peek(metric::handleLong)
-				.mapToObj(i -> new Block(network, network.getVersion(), tail.getIndex() + 1, tail.getHash(), Instant.now().getEpochSecond(), transactions, difficulty, i))
+				.mapToObj(i -> new Block(network, tail.getIndex() + 1, tail.getHash(), Instant.now().getEpochSecond(), transactions, difficulty, i))
 				.filter(b -> Block.hashMatchesDifficulty(b.getHash(), difficulty)).findAny().orElse(null);
 		metric.end();
 		
@@ -208,13 +208,15 @@ public class Miner extends Thread {
 				TXO txo = tx.getTxos().get(0);
 				//make sure this is our reward
 				if(txo.getAddress().equals(wallet.getAddress(block.getNetwork()))) {
-					rewards.add(new UTXO(block.getNetwork(), tx.getId(), 0, txo.getAddress(), txo.getAmount()));
+					rewards.add(new UTXO(block.getNetwork(), tx.getId(), 0, txo.getAddress(), txo.getAmount(), null));
 				}
 			}
 		}
 		Token reward = rewards.stream().map(utxo -> utxo.getAmount()).reduce(Token.ZERO, (a, b) -> Token.sum(a, b));
-		wallet.addUtxos(rewards);
-		System.out.printf("Earned a reward of %s; wallet balace is now %s\n", reward, wallet.getBalance(block.getNetwork()));
+		if(reward.compareTo(Token.ZERO) > 0) {
+			wallet.addUtxos(rewards);
+			System.out.printf("Earned a reward of %s; wallet balace is now %s\n", reward, wallet.getBalance(block.getNetwork()));
+		}
 	}
 
 	private static enum State {
@@ -290,7 +292,7 @@ public class Miner extends Thread {
 		} else {
 			try {
 				Network network = Network.valueOf(message.getNetwork().getId());
-				if(networks.contains(network) && network.getVersion() == message.getVersion()) {
+				if(networks.contains(network)) {
 					return true;
 				} else {
 					return false;

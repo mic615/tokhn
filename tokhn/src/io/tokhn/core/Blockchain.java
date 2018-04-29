@@ -17,43 +17,40 @@
 package io.tokhn.core;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
+import javax.script.Invocable;
+import javax.script.ScriptException;
+
+import delight.nashornsandbox.NashornSandbox;
+import delight.nashornsandbox.NashornSandboxes;
+import delight.nashornsandbox.exceptions.ScriptCPUAbuseException;
+import io.tokhn.core.Transaction.Type;
 import io.tokhn.node.Network;
-import io.tokhn.node.Version;
 import io.tokhn.store.BlockStore;
 import io.tokhn.store.UTXOStore;
 import io.tokhn.util.Hash;
 
 public class Blockchain {
-	private static final int BLOCK_GENERATION_INTERVAL = 600; //this is in seconds
-	private static final int DIFFICULTY_ADJUSTMENT_INTERVAL = 5; //this is in increments
-	private static final int VALID_DRIFT = 2 * 60 * 60; //this is in seconds
 	private final Network network;
-	private final Version version;
 	private final BlockStore bStore;
 	private final UTXOStore uStore;
 	private LocalBlock genesisBlock = null;
 	private LocalBlock latestBlock = null;
 	
-	public Blockchain(Network network, Version version, BlockStore bStore, UTXOStore uStore) {
+	public Blockchain(Network network, BlockStore bStore, UTXOStore uStore) {
 		this.network = network;
-		this.version = version;
 		this.bStore = bStore;
 		this.uStore = uStore;
 		latestBlock = bStore.getLatestBlock();
 		if(latestBlock == null || !isValidChain()) {
-			long genesisTime = 1514764800;
-			ArrayList<Transaction> transactions = new ArrayList<>();
-			List<TXO> txos = new LinkedList<>();
-			txos.add(new TXO(network.getCharityAddress(), Token.ONE));
-			transactions.add(new Transaction(version, genesisTime, new LinkedList<>(), txos));
-			genesisBlock = new LocalBlock(new Block(network, version, 0, Hash.EMPTY_HASH, genesisTime, transactions, 1, 0), this);
-			storeAndProcess(genesisBlock);
+			genesisBlock = new LocalBlock(network.getParams().getGenesisBlock(), this);
+			processAndStore(genesisBlock);
 			latestBlock = genesisBlock;
 		}
 	}
@@ -63,7 +60,7 @@ public class Blockchain {
 			return false;
 		} else if(block.getPreviousHash().equals(getLatestBlock().getHash()) && isValidBlock(block, getLatestBlock())) {
 			//new latest block
-			latestBlock = storeAndProcess(block);
+			latestBlock = processAndStore(block);
 			return true;
 		}
 		
@@ -72,7 +69,7 @@ public class Blockchain {
 			//this must be a branch block
 			System.out.println("Branch block found");
 			if(isValidBlock(block, prevBlock)) {
-				LocalBlock newLatest = storeAndProcess(block);
+				LocalBlock newLatest = processAndStore(block);
 				if(getLatestBlock().getAggregatedDifficulty().compareTo(newLatest.getAggregatedDifficulty()) == -1) {
 					//this is from a better chain
 					System.out.println("Branch block is from superior chain");
@@ -106,7 +103,7 @@ public class Blockchain {
 	
 	public int getDifficulty() {
 		LocalBlock latestBlock = getLatestBlock();
-		if(latestBlock.getIndex() % DIFFICULTY_ADJUSTMENT_INTERVAL == 0 && latestBlock.getIndex() != 0) {
+		if(latestBlock.getIndex() % network.getParams().getDifficultyAdjustmentInterval() == 0 && latestBlock.getIndex() != 0) {
 			return getAdjustedDifficulty();
 		} else {
 			return latestBlock.getDifficulty();
@@ -134,7 +131,7 @@ public class Blockchain {
 			return false;
 		} else if(!previousBlock.getHash().equals(block.getPreviousHash())) {
 			return false;
-		} else if(block.getTimestamp() < previousBlock.getTimestamp() - VALID_DRIFT || block.getTimestamp() > Instant.now().getEpochSecond() + VALID_DRIFT) {
+		} else if(block.getTimestamp() < previousBlock.getTimestamp() - network.getParams().getValidDrift() || block.getTimestamp() > Instant.now().getEpochSecond() + network.getParams().getValidDrift()) {
 			//a new block can't be before the previous block and it shouldn't be from the future either
 			return false;
 		} else if(!Block.hash(block.getIndex(), previousBlock.getHash(), block.getTimestamp(), block.getTransactions(), block.getDifficulty(), block.getNonce()).equals(block.getHash())) {
@@ -146,20 +143,26 @@ public class Blockchain {
 		return true;
 	}
 	
+	//TODO: does this need to validate transactions that aren't in the latest block?
 	public boolean isValidTransaction(Transaction tx) {
-		if (!Transaction.hash(tx.getTimestamp(), tx.getTxis(), tx.getTxos()).equals(tx.getId())) {
+		if (!Transaction.hash(tx.getTimestamp(), tx.getType(), tx.getTxis(), tx.getTxos()).equals(tx.getId())) {
 			return false;
-		} else if(tx.getTxis().size() == 0 && tx.getTxos().size() == 1) {
+		} else if(tx.getType() == Type.REWARD) {
 			//this is a miner reward
-			//TODO: verify the correct reward
+			if(!tx.getTxos().get(0).getAmount().equals(Token.valueOfInOnes(getReward()))) {
+				return false;
+			}
 		} else {
 			/*
 			 * we want to find all the UTXOs associated with the TXIs, but we might not find
 			 * them for our purposes then, we will assume that not finding a UTXOs is going
 			 * to be okay because then the amount will be smaller than it should and the
 			 * transaction won't verify.
+			 * 
+			 * additionally, we are going to consider TXIs that verify
 			 */
 			Token totalTxiAmounts = tx.getTxis().stream()
+					.filter(txi -> txi.verify())
 					.map(txi -> uStore.get(UTXO.hash(network, txi)))
 					.filter(utxo -> utxo != null)
 					.map(utxo -> utxo.getAmount())
@@ -174,8 +177,25 @@ public class Blockchain {
 			}
 		}
 		
-		// check that the signatures verify
-		if (!tx.getTxis().stream().allMatch(txi -> txi.verify(tx))) {
+		/*
+		 * check that TXIs verify and their scripts return true
+		 * 
+		 * since this one liner is complicated, let me break it down:
+		 * for the given transaction, get each TXI
+		 * for each TXI, verify its signature and execute its script if it has one
+		 */
+		if (!tx.getTxis().stream().allMatch(txi -> txi.verify() && executeScript(tx, txi.getScript()))) {
+			return false;
+		}
+		
+		/*
+		 * check that any TXIs that point to TXOs with scripts are executed and return true
+		 * 
+		 * since this one liner is complicated, let me break it down:
+		 * for the given transaction, get the associated UTXO for each TXI
+		 * assuming we find any associated UTXOs, then execute its script if it has one
+		 */
+		if(!tx.getTxis().stream().map(txi -> uStore.get(UTXO.hash(network, txi))).filter(utxo -> utxo != null).allMatch(utxo -> executeScript(tx, utxo.getScript()))) {
 			return false;
 		}
 
@@ -198,6 +218,14 @@ public class Blockchain {
 		}
 	}
 	
+	public UTXO getUtxo(Hash utxoId) {
+		return uStore.get(utxoId);
+	}
+	
+	public List<UTXO> getUtxosForAddress(Address address) {
+		return uStore.getUtxosForAddress(address);
+	}
+	
 	public LocalBlock getBlock(Hash hash) {
 		return bStore.get(hash);
 	}
@@ -218,10 +246,6 @@ public class Blockchain {
 		return network;
 	}
 
-	public Version getVersion() {
-		return version;
-	}
-
 	private void processBlockTransactions(LocalBlock block) {
 		List<UTXO> consumeUtxos = new LinkedList<>();
 		List<UTXO> generateUtxos = new LinkedList<>();
@@ -235,12 +259,12 @@ public class Blockchain {
 				rewardUtxos.add(utxo);
 			} else {
 				for(TXI txi : tx.getTxis()) {
-					UTXO utxo = uStore.get(UTXO.hash(network, txi.getSourceTxoId(), txi.getSourceTxoIndex()));
+					UTXO utxo = uStore.get(UTXO.hash(network, txi.getSourceTxId(), txi.getSourceTxoIndex()));
 					consumeUtxos.add(utxo);
 				}
 				for(int itr = 0; itr< tx.getTxos().size(); itr++) {
 					TXO txo = tx.getTxos().get(itr);
-					UTXO utxo = new UTXO(network, tx.getId(), itr, txo.getAddress(), txo.getAmount());
+					UTXO utxo = new UTXO(network, tx.getId(), itr, txo.getAddress(), txo.getAmount(), txo.getScript());
 					generateUtxos.add(utxo);
 				}
 			}
@@ -254,7 +278,7 @@ public class Blockchain {
 		} else {
 			if(netMegas > 0) {
 				//give the left over money to charity
-				Transaction charity = Transaction.rewardOf(version, network.getCharityAddress(), netMegas);
+				Transaction charity = Transaction.rewardOf(network.getCharityAddress(), netMegas);
 				TXO txo = charity.getTxos().get(0);
 				block.getTransactions().add(charity);
 				rewardUtxos.add(new UTXO(network, charity.getId(), 0, txo.getAddress(), txo.getAmount()));
@@ -270,30 +294,31 @@ public class Blockchain {
 		//the theory is to remove any existing UTXOs associated with this block
 		for(Transaction tx : block.getTransactions()) {
 			for(TXI txi : tx.getTxis()) {
-				uStore.remove(UTXO.hash(network, txi.getSourceTxoId(), txi.getSourceTxoIndex()));
+				uStore.remove(UTXO.hash(network, txi.getSourceTxId(), txi.getSourceTxoIndex()));
 			}
 		}
 	}
 	
-	private LocalBlock storeAndProcess(Block block) {
+	private LocalBlock processAndStore(Block block) {
 		LocalBlock lb = new LocalBlock(block, this);
-		bStore.put(lb);
 		processBlockTransactions(lb);
+		bStore.put(lb);
 		return lb;
 	}
 
 	private int getAdjustedDifficulty() {
 		LocalBlock prevAdjustmentBlock = null;
-		for(int itr = 1; itr != DIFFICULTY_ADJUSTMENT_INTERVAL; itr++) {
+		for(int itr = 1; itr != network.getParams().getDifficultyAdjustmentInterval(); itr++) {
 			prevAdjustmentBlock = getBlock(getLatestBlock().getPreviousHash());
 		}
-		int timeExpected = BLOCK_GENERATION_INTERVAL * DIFFICULTY_ADJUSTMENT_INTERVAL;
+		int timeExpected = network.getParams().getBlockGenerationInterval() * network.getParams().getDifficultyAdjustmentInterval();
 		long timeTaken = getLatestBlock().getTimestamp() - prevAdjustmentBlock.getTimestamp();
 		
 		if(timeTaken < timeExpected / 2) {
 			return prevAdjustmentBlock.getDifficulty() + 1;
 		} else if(timeTaken > timeExpected * 2) {
-			return prevAdjustmentBlock.getDifficulty() - 1;
+			int newDifficulty = prevAdjustmentBlock.getDifficulty() - 1;
+			return newDifficulty >= 1 ? newDifficulty : 1;
 		} else {
 			return prevAdjustmentBlock.getDifficulty();
 		}
@@ -358,5 +383,28 @@ public class Blockchain {
 			}
 		}
 		return blocks;
+	}
+	
+	private boolean executeScript(Transaction tx, String script) {
+		if(script != null && !script.isEmpty()) {
+			ExecutorService executor = Executors.newSingleThreadExecutor();
+			NashornSandbox sandbox = NashornSandboxes.create();
+			sandbox.setMaxCPUTime(network.getParams().getMaxCpuTime());
+			sandbox.setMaxMemory(network.getParams().getMaxMemory());
+			sandbox.setMaxPreparedStatements(network.getParams().getMaxPreparedStatements());
+			sandbox.setExecutor(executor);
+			try {
+				sandbox.eval(script);
+				Invocable invocable = sandbox.getSandboxedInvocable();
+				Object result = invocable.invokeFunction("handleTx", tx);
+				executor.shutdown();
+				return (boolean) result;
+			} catch (ScriptCPUAbuseException | ScriptException | NoSuchMethodException e) {
+				System.err.println(e);
+				return false;
+			}
+		} else {
+			return true;
+		}
 	}
 }

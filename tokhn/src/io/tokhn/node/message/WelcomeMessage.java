@@ -36,6 +36,6 @@ public class WelcomeMessage extends AbstractMessage {
 	
 	public String toString() {
 		String relay = getRelayHosts().stream().reduce("", (a, b) -> a + "->" + b);
-		return String.format("%s (NET:%s, VER:%s, TME:%s, DIF:%d, RWD:%d, BCK:%s) [%s]", getClass().getSimpleName(), getNetwork(), getVersion(), timestamp, difficulty, reward, latestBlock, relay);
+		return String.format("%s (NET:%s, TME:%s, DIF:%d, RWD:%d, BCK:%s) [%s]", getClass().getSimpleName(), getNetwork(), timestamp, difficulty, reward, latestBlock, relay);
 	}
 }

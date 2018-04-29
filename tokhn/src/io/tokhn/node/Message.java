@@ -22,7 +22,6 @@ import java.util.List;
 
 public interface Message extends Serializable {
 	public Network getNetwork();
-	public Version getVersion();
 	public void addRelayHost(InetAddress addr);
 	public void addRelayHost(String host);
 	public List<String> getRelayHosts();

@@ -1,17 +1,17 @@
 /*
  * Copyright 2018 Matt Liotta
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 
 package io.tokhn.node;
@@ -25,14 +25,17 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import io.tokhn.core.Address;
+import io.tokhn.node.network.LUV;
+import io.tokhn.node.network.Pheno;
+import io.tokhn.node.network.Test;
+import io.tokhn.node.network.Tokhn;
 
 public enum Network implements Serializable {
-	TKHN((byte) 0x00), TEST((byte) 0xFF);
+	TKHN((byte) 0x00), PHNO((byte) 0x01), LUV((byte) 0x02), TEST((byte) 0xFF);
 	
 	private final String CHARITY_PUBLIC_KEY = "MEkwEwYHKoZIzj0CAQYIKoZIzj0DAQEDMgAEnVXogujT/TEPj2c1JbuJxpa6ZZ8YUcBoqLfvn1M13/CNEI9boWJKiSjCLUwlgjz1";
 	private final byte id;
@@ -40,13 +43,9 @@ public enum Network implements Serializable {
 	private Network(byte id) {
 		this.id = id;
 	}
-
+	
 	public byte getId() {
 		return id;
-	}
-	
-	public Version getVersion() {
-		return Version.valueOf(getProperties().getProperty("VERSION"));
 	}
 	
 	public static Set<Network> getAll() {
@@ -62,17 +61,21 @@ public enum Network implements Serializable {
 		throw new InvalidNetworkException();
 	}
 	
-	public Properties getProperties() {
-		Properties props = new Properties();
+	public NetworkParams getParams() {
 		switch(this) {
 			case TKHN:
-				props.setProperty("VERSION", "ZERO");
-				return props;
+				return new Tokhn();
+			case PHNO:
+				return new Pheno();
+			case LUV:
+				return new LUV();
 			case TEST:
-				props.setProperty("VERSION", "ZERO");
-				return props;
+				return new Test();
+			default:
+				System.err.println("Missing case statement for Network");
+				System.exit(-1);
+				return null;
 		}
-		return null;
 	}
 	
 	public Address getCharityAddress() {
@@ -82,22 +85,11 @@ public enum Network implements Serializable {
 			byte[] publicKey = Base64.getDecoder().decode(CHARITY_PUBLIC_KEY.getBytes(StandardCharsets.UTF_8));
 			X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKey);
 			address = new Address(fact.generatePublic(publicKeySpec), this);
-		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeySpecException e) {
-			e.printStackTrace();
+		} catch(NoSuchAlgorithmException | NoSuchProviderException | InvalidKeySpecException e) {
+			System.err.println(e);
+			System.exit(-1);
 		}
 		
 		return address;
-	}
-	
-	public Peer[] getSeedPeers() {
-		switch(this) {
-			case TKHN:
-				Peer[] phePeers = {new Peer("127.0.0.1", 1337)};
-				return phePeers;
-			case TEST:
-				Peer[] testPeers = {new Peer("127.0.0.1", 1337)};
-				return testPeers;
-		}
-		return null;
 	}
 }

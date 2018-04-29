@@ -30,6 +30,6 @@ public class TransactionMessage extends AbstractMessage {
 	
 	public String toString() {
 		String relay = getRelayHosts().stream().reduce("", (a, b) -> a + "->" + b);
-		return String.format("%s (NET:%s, VER:%s, TX:%s) [%s]", getClass().getSimpleName(), getNetwork(), getVersion(), transaction, relay);
+		return String.format("%s (NET:%s, TX:%s) [%s]", getClass().getSimpleName(), getNetwork(), transaction, relay);
 	}
 }

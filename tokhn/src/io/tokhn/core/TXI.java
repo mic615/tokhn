@@ -17,6 +17,8 @@
 package io.tokhn.core;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
@@ -42,20 +44,31 @@ import io.tokhn.util.Hash;
 
 public class TXI implements Serializable {
 	private static final long serialVersionUID = -2192154375566006776L;
-	private final Hash sourceTxoId;
+	private final Hash sourceTxId;
 	private final int sourceTxoIndex;
+	private final String script;
 	private byte[] signature;
-
-	public TXI(Hash sourceTxoId, int sourceTxoIndex) {
-		this.sourceTxoId = sourceTxoId;
-		this.sourceTxoIndex = sourceTxoIndex;
+	
+	public TXI(Hash sourceTxId, int sourceTxoIndex) {
+		this(sourceTxId, sourceTxoIndex, "", null);
 	}
 
-	public void sign(Transaction transaction, PrivateKey privateKey) {
+	public TXI(Hash sourceTxId, int sourceTxoIndex, String script) {
+		this(sourceTxId, sourceTxoIndex, script, null);
+	}
+	
+	public TXI(Hash sourceTxId, int sourceTxoIndex, String script, byte[] signature) {
+		this.sourceTxId = sourceTxId;
+		this.sourceTxoIndex = sourceTxoIndex;
+		this.script = script;
+		this.signature = signature;
+	}
+
+	public void sign(PrivateKey privateKey) {
 		try {
 			Signature ecdsaSign = Signature.getInstance("SHA256withECDSA", "BC");
 			ecdsaSign.initSign(privateKey);
-			ecdsaSign.update(Arrays.concatenate(transaction.getId().getBytes(), getSourceTxoId().getBytes()));
+			ecdsaSign.update(getData());
 			signature = ecdsaSign.sign();
 		} catch (NoSuchAlgorithmException | NoSuchProviderException e) {
 			e.printStackTrace();
@@ -65,9 +78,9 @@ public class TXI implements Serializable {
 		}
 	}
 
-	public boolean verify(Transaction tx) {
+	public boolean verify() {
 		try {
-			byte[] dataBytes = Arrays.concatenate(tx.getId().getBytes(), getSourceTxoId().getBytes());
+			byte[] dataBytes = getData();
 			byte[] sigBytes = getSignature();
 
 			ECNamedCurveParameterSpec params = ECNamedCurveTable.getParameterSpec("prime192v1");
@@ -82,6 +95,7 @@ public class TXI implements Serializable {
 			Signature ecdsaVerify = Signature.getInstance("SHA256withECDSA", "BC");
 			ecdsaVerify.initVerify(publicKey);
 			ecdsaVerify.update(dataBytes);
+			
 			return ecdsaVerify.verify(sigBytes);
 		} catch (NoSuchAlgorithmException | NoSuchProviderException e) {
 			e.printStackTrace();
@@ -93,15 +107,23 @@ public class TXI implements Serializable {
 		return false;
 	}
 
-	public Hash getSourceTxoId() {
-		return sourceTxoId;
+	public Hash getSourceTxId() {
+		return sourceTxId;
 	}
 
 	public int getSourceTxoIndex() {
 		return sourceTxoIndex;
 	}
+	
+	public String getScript() {
+		return script;
+	}
 
 	public byte[] getSignature() {
 		return signature;
+	}
+	
+	private byte[] getData() {
+		return Arrays.concatenate(getSourceTxId().getBytes(), ByteBuffer.allocate(Integer.BYTES).putInt(getSourceTxoIndex()).array(), script.getBytes(StandardCharsets.UTF_8));
 	}
 }

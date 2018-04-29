@@ -22,30 +22,19 @@ import java.util.List;
 
 import io.tokhn.node.Message;
 import io.tokhn.node.Network;
-import io.tokhn.node.Version;
 
 public abstract class AbstractMessage implements Message {
 	private static final long serialVersionUID = 2295820372130639338L;
 	private final Network network;
-	private final Version version;
 	private final List<String> relayHosts;
 	
 	public AbstractMessage(Network network) {
-		this(network, network.getVersion());
-	}
-	
-	public AbstractMessage(Network network, Version version) {
 		this.network = network;
-		this.version = version;
 		relayHosts = new LinkedList<>();
 	}
 	
 	public Network getNetwork() {
 		return network;
-	}
-	
-	public Version getVersion() {
-		return version;
 	}
 	
 	public void addRelayHost(InetAddress addr) {
@@ -62,6 +51,6 @@ public abstract class AbstractMessage implements Message {
 	
 	public String toString() {
 		String relay = relayHosts.stream().reduce("", (a, b) -> a + "->" + b);
-		return String.format("%s (NET:%s, VER:%s) [%s]", getClass().getSimpleName(), network, version, relay);
+		return String.format("%s (NET:%s) [%s]", getClass().getSimpleName(), network, relay);
 	}
 }

@@ -43,7 +43,7 @@ public final class Token implements Comparable<Token>, Serializable {
 		return new Token(megas);
 	}
 	
-	public static Token parsePheno(final String str) {
+	public static Token parseToken(final String str) {
         try {
             long megas = new BigDecimal(str).movePointRight(SMALLEST_UNIT_EXPONENT).longValue();
             return Token.valueOfInMegas(megas);
@@ -53,12 +53,16 @@ public final class Token implements Comparable<Token>, Serializable {
     }
 	
 	public String toString() {
-		return "‽" + new BigDecimal(value).movePointLeft(SMALLEST_UNIT_EXPONENT);
+		return "¤" + new BigDecimal(value).movePointLeft(SMALLEST_UNIT_EXPONENT);
     }
 	
 	public long getValue() {
         return value;
     }
+	
+	public double getDecimalValue() {
+		return (double) value / TOKEN_VALUE;
+	}
 	
 	public int smallestUnitExponent() {
         return SMALLEST_UNIT_EXPONENT;
@@ -67,5 +71,22 @@ public final class Token implements Comparable<Token>, Serializable {
 	@Override
 	public int compareTo(Token o) {
 		return Long.compare(this.getValue(), o.getValue());
+	}
+	
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		} else if (o == null) {
+			return false;
+		} else if (getClass() != o.getClass()) {
+			return false;
+		}
+
+		Token other = (Token) o;
+		if (this.getValue() != other.getValue()) {
+			return false;
+		}
+		return true;
 	}
 }

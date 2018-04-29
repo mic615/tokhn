@@ -22,63 +22,81 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import io.tokhn.node.Version;
 import io.tokhn.util.Hash;
 
 public class Transaction implements Comparable<Transaction>, Serializable {
 	private static final long serialVersionUID = -8510962834025629565L;
-	private final Version version;
 	private final Hash id;
 	private final long timestamp;
+	private final Type type;
 	private final List<TXI> txis;
 	private final List<TXO> txos;
 	
-	public Transaction(Version version, long timestamp, List<TXI> txis, List<TXO> txos) {
-		this.version = version;
+	public Transaction(long timestamp, List<TXI> txis, List<TXO> txos) {
+		if(txis.isEmpty() && txos.size() == 1) {
+			this.type = Type.REWARD;
+		} else if(txis.stream().anyMatch(txi -> !txi.getScript().isEmpty()) || txos.stream().anyMatch(txo -> !txo.getScript().isEmpty())) {
+			this.type = Type.FEE;
+		} else {
+			this.type = Type.REGULAR;
+		}
 		this.timestamp = timestamp;
 		this.txis = txis;
 		this.txos = txos;
-		id = hash(timestamp, txis, txos);
+		id = hash(timestamp, type, txis, txos);
 	}
 	
-	public static Hash hash(long timestamp, List<TXI> txis, List<TXO> txos) {
+	public Transaction(Hash id, long timestamp, Type type, List<TXI> txis, List<TXO> txos) {
+		this.id = id;
+		this.timestamp = timestamp;
+		this.type = type;
+		this.txis = txis;
+		this.txos = txos;
+	}
+	
+	public static Hash hash(long timestamp, Type type, List<TXI> txis, List<TXO> txos) {
 		/*
 		 * create a stream of transactionIns
-		 * map a transactionIn to a concatenation of outId and outIndex
+		 * map a transactionIn to a concatenation of outId, outIndex, and script
 		 * reduce to a concatenation of the above
 		 */
-		String ins = txis.stream().map(t -> t.getSourceTxoId().toString() + t.getSourceTxoIndex()).reduce("", (a, b) -> a + b);
+		String ins = txis.stream().map(txi -> {
+			switch(type) {
+				case FEE:
+				case REGULAR:
+					return txi.getSourceTxId().toString() + txi.getSourceTxoIndex() + txi.getScript();
+				case REWARD:
+				default:
+					return "";
+			}
+		}).reduce("", (a, b) -> a + b);
 		/*
 		 * create a stream of transactionOuts
-		 * map a transactionOut to a concatenation of address and amount
+		 * map a transactionOut to a concatenation of address, amount, and script
 		 * reduce to a concatenation of the above
 		 */
-		String outs = txos.stream().map(t -> t.getAddress().toString() + t.getAmount()).reduce("", (a, b) -> a + b);
+		String outs = txos.stream().map(txo -> txo.getAddress().toString() + txo.getAmount().getValue() + txo.getScript()).reduce("", (a, b) -> a + b);
 		
 		String toHash = timestamp + ins + outs;
 		return Hash.of(toHash);
 	}
 	
-	public static Transaction rewardOf(Version version, Address address, int ones) {
-		return rewardOf(version, address, Token.valueOfInOnes(ones));
+	public static Transaction rewardOf(Address address, int ones) {
+		return rewardOf(address, Token.valueOfInOnes(ones));
 	}
 	
-	public static Transaction rewardOf(Version version, Address address, long megas) {
-		return rewardOf(version, address, Token.valueOfInMegas(megas));
+	public static Transaction rewardOf(Address address, long megas) {
+		return rewardOf(address, Token.valueOfInMegas(megas));
 	}
 	
-	private static Transaction rewardOf(Version version, Address address, Token amount) {
+	private static Transaction rewardOf(Address address, Token amount) {
 		List<TXO> txos = new LinkedList<>();
 		txos.add(new TXO(address, amount));
-		return new Transaction(version, Instant.now().getEpochSecond(), new LinkedList<>(), txos);
+		return new Transaction(Instant.now().getEpochSecond(), new LinkedList<>(), txos);
 	}
 	
 	public List<Address> getAllAddresses() {
 		return txos.stream().map(t -> t.getAddress()).distinct().collect(Collectors.toList());
-	}
-
-	public Version getVersion() {
-		return version;
 	}
 
 	public Hash getId() {
@@ -87,6 +105,10 @@ public class Transaction implements Comparable<Transaction>, Serializable {
 	
 	public long getTimestamp() {
 		return timestamp;
+	}
+	
+	public Type getType() {
+		return type;
 	}
 
 	public List<TXI> getTxis() {
@@ -117,5 +139,14 @@ public class Transaction implements Comparable<Transaction>, Serializable {
 	@Override
 	public int compareTo(Transaction o) {
 		return id.compareTo(o.getId());
+	}
+	
+	@Override
+	public String toString() {
+		return String.format("%s@%d [%d:%d]", getId(), getTimestamp(), getTxis().size(), getTxos().size());
+	}
+	
+	public enum Type {
+		FEE, REGULAR, REWARD
 	}
 }

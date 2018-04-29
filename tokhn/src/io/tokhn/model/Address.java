@@ -1,6 +1,5 @@
 /*
- * Copyright 2011 Google Inc.
- * Copyright 2015 Andreas Schildbach
+ * Copyright 2018 Matt Liotta
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +14,25 @@
  * limitations under the License.
  */
 
-package org.bitcoinj.core;
+package io.tokhn.model;
 
-@SuppressWarnings("serial")
-public class AddressFormatException extends IllegalArgumentException {
-    public AddressFormatException() {
-        super();
-    }
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 
-    public AddressFormatException(String message) {
-        super(message);
-    }
+public class Address {
+	private final StringProperty network;
+	private final StringProperty address;
+	
+	public Address(String network, String address) {
+		this.network = new SimpleStringProperty(network);
+		this.address = new SimpleStringProperty(address);
+	}
+
+	public StringProperty getNetwork() {
+		return network;
+	}
+
+	public StringProperty getAddress() {
+		return address;
+	}
 }

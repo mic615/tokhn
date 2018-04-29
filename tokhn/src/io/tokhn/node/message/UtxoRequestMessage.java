@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-package io.tokhn.util;
+package io.tokhn.node.message;
 
-public class Utils {
-	public static String toHexString(byte[] bytes) {
-		return toHexString(bytes, Character.MIN_VALUE);
+import io.tokhn.core.Address;
+import io.tokhn.node.Network;
+
+public class UtxoRequestMessage extends AbstractMessage {
+	private static final long serialVersionUID = 5769160448911148154L;
+	public final Address address;
+	
+	public UtxoRequestMessage(Network network, Address address) {
+		super(network);
+		this.address = address;
 	}
 	
-	public static String toHexString(byte[] bytes, char delimiter) {
-		StringBuilder sb = new StringBuilder();
-		for(int itr = 0; itr < bytes.length; itr++) {
-			if(itr < bytes.length - 1) {
-				sb.append(String.format("%02X%s", bytes[itr], delimiter));
-			} else {
-				sb.append(String.format("%02X", bytes[itr]));
-			}
-		}
-		return sb.toString().toLowerCase();
+	public String toString() {
+		String relay = getRelayHosts().stream().reduce("", (a, b) -> a + "->" + b);
+		return String.format("%s (NET:%s, ADD:%s) [%s]", getClass().getSimpleName(), getNetwork(), address, relay);
 	}
 }

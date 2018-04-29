@@ -14,20 +14,24 @@
  * limitations under the License.
  */
 
-package io.tokhn.node;
+package io.tokhn.node.message;
 
-import java.io.Serializable;
+import java.util.List;
 
-public enum Version implements Serializable {
-	ZERO((byte) 0x00), ONE((byte) 0x01), TWO((byte) 0x02), THREE((byte) 0x03), FOUR((byte) 0x04), FIVE((byte) 0x05);
+import io.tokhn.core.UTXO;
+import io.tokhn.node.Network;
+
+public class UtxoMessage extends AbstractMessage {
+	private static final long serialVersionUID = -3704999753091126950L;
+	public final List<UTXO> utxos;
 	
-	private final byte id;
-	
-	private Version(byte id) {
-		this.id = id;
+	public UtxoMessage(Network network, List<UTXO> utxos) {
+		super(network);
+		this.utxos = utxos;
 	}
-
-	public byte getId() {
-		return id;
+	
+	public String toString() {
+		String relay = getRelayHosts().stream().reduce("", (a, b) -> a + "->" + b);
+		return String.format("%s (NET:%s, UTS:%s) [%s]", getClass().getSimpleName(), getNetwork(), utxos, relay);
 	}
 }

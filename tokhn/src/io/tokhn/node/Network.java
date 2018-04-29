@@ -29,12 +29,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import io.tokhn.core.Address;
+import io.tokhn.node.network.LUV;
 import io.tokhn.node.network.Pheno;
 import io.tokhn.node.network.Test;
 import io.tokhn.node.network.Tokhn;
 
 public enum Network implements Serializable {
-	TKHN((byte) 0x00), PHNO((byte) 0x01), TEST((byte) 0xFF);
+	TKHN((byte) 0x00), PHNO((byte) 0x01), LUV((byte) 0x02), TEST((byte) 0xFF);
 	
 	private final String CHARITY_PUBLIC_KEY = "MEkwEwYHKoZIzj0CAQYIKoZIzj0DAQEDMgAEnVXogujT/TEPj2c1JbuJxpa6ZZ8YUcBoqLfvn1M13/CNEI9boWJKiSjCLUwlgjz1";
 	private final byte id;
@@ -66,6 +67,8 @@ public enum Network implements Serializable {
 				return new Tokhn();
 			case PHNO:
 				return new Pheno();
+			case LUV:
+				return new LUV();
 			case TEST:
 				return new Test();
 			default:

@@ -72,7 +72,10 @@ public class Wallet implements Serializable {
 	public void addUtxos(List<UTXO> utxos) {
 		utxos.forEach(utxo -> store.putUtxo(utxo));
 	}
-	
+	public void setBalance(UTXO utxo) {
+		store.putUtxo(utxo);
+		
+	}
 	public Token getBalance(Network network) {
 		long megas = store.getUtxos(network).stream().mapToLong(utxo -> utxo.getAmount().getValue()).sum();
 		return Token.valueOfInMegas(megas);
